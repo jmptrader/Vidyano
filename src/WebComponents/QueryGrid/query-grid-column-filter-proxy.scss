@@ -1,0 +1,20 @@
+﻿@import "query-grid-column-filter.scss";
+
+:host {
+    &:not([disabled]) {
+        @include theme-color-button-inverse();
+    }
+
+    &[disabled] {
+        vi-icon, #label {
+            display: none !important;
+        }
+    }
+}
+
+:host-context(vi-grid.initializing) {
+    // Filters shouldn't take part in the column width calculation, so hide it until the query grid is done initializing.
+    #label {
+        display: none !important;
+    }
+}

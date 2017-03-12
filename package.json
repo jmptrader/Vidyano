@@ -1,17 +1,21 @@
 {
-  "version": "0.5.2-alpha",
-  "name": "Vidyano",
+  "name": "vidyano",
   "private": true,
   "devDependencies": {
+    "dts-generator": "2.0.0",
     "grunt": "0.4.5",
     "grunt-bower-task": "0.4.0",
-    "grunt-contrib-clean": "^0.6.0",
-    "grunt-contrib-copy": "^0.8.0",
-    "grunt-contrib-less": "^1.0.0",
-    "grunt-contrib-watch": "^0.6.1",
-    "grunt-tsconfig": "^0.2.0",
-    "less": "^2.1.2",
-    "dts-generator": "^1.5.0",
-    "typescript": "^1.5.3"
+    "grunt-contrib-clean": "^1.0.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-cssmin": "^1.0.2",
+    "grunt-contrib-uglify": "^1.0.1",
+    "grunt-git-revision": "^0.0.1",
+    "grunt-sass": "^1.1.0",
+    "grunt-text-replace": "^0.4.0",
+    "grunt-ts": "^6.0.0-beta.11",
+    "grunt-tslint": "4.0.1",
+    "tslint": "4.4.2",
+    "typescript": "^2.2.0",
+    "tslib": "^1.6.0"
   }
 }

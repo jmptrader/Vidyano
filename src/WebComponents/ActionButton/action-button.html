@@ -1,25 +1,31 @@
+<link rel="import" href="../Button/button.html" />
+
 <dom-module id="vi-action-button">
     <template>
-        <template is="dom-if" if="{{!hasOptions}}">
-            <button is="vi-button" disabled="{{!canExecute}}" header class="layout horizontal" on-tap="_executeWithoutOptions" inverse>
-                <vi-resource source="{{icon}}"></vi-resource>
-                <span class="label">{{action.definition.displayName}}</span>
+        <link rel="stylesheet" href="action-button.css" />
+        <template is="dom-if" if="[[!options]]">
+            <button is="vi-button" disabled="[[!canExecute]]" header on-tap="_onExecuteWithoutOptions" inverse>
+                <div class="layout horizontal">
+                    <vi-icon source="[[icon]]"></vi-icon>
+                    <span class="label">[[action.definition.displayName]]</span>
+                </div>
             </button>
         </template>
-        <template is="dom-if" if="{{hasOptions}}">
-            <vi-popup-menu open-on-hover="{{overflow}}">
-                <button is="vi-button" disabled="{{!canExecute}}" header class="layout horizontal" inverse>
-                    <vi-resource source="{{icon}}"></vi-resource>
-                    <span class="label">{{action.definition.displayName}}</span>
-                    <vi-resource source="Icon_Down" class="options"></vi-resource>
+        <template is="dom-if" if="[[options]]">
+            <vi-popup-menu open-on-hover="[[_computeOpenOnHover(overflow, openOnHover)]]" disabled="[[!canExecute]]">
+                <button is="vi-button" disabled="[[!canExecute]]" header inverse class="options">
+                    <div class="layout horizontal">
+                        <vi-icon source="[[icon]]"></vi-icon>
+                        <span class="label">[[action.definition.displayName]]</span>
+                        <vi-icon source="Down"></vi-icon>
+                    </div>
                 </button>
-                <template is="dom-repeat" items="{{options}}">
-                    <vi-popup-menu-item label="{{item}}" on-tap="_executeWithOption" data-option-index$="{{index}}"></vi-popup-menu-item>
+                <template is="dom-repeat" items="[[options]]" as="option">
+                    <vi-popup-menu-item label="[[option.value]]" on-tap="_onExecuteWithOption"></vi-popup-menu-item>
                 </template>
             </vi-popup-menu>
         </template>
     </template>
 </dom-module>
 
-<link rel="stylesheet" href="action-button.css" />
 <script src="action-button.js"></script>

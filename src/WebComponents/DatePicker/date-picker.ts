@@ -1,307 +1,283 @@
-﻿module Vidyano.WebComponents {
-    export class DatePicker extends WebComponent {
-        private _today = new Date();
-        private _daysBody: HTMLElement;
-        private _monthsAndYearsBody: HTMLElement;
-        private _dayCells: HTMLDivElement[][];
-        private _monthsAndYearsCells: HTMLDivElement[];
-        private _currentDate: Date;
-        private _minYears: number;
-        header: string;
-        zoom: string;
-        selectedDate: Date;
+﻿namespace Vidyano.WebComponents {
+    "use strict";
 
-        attached() {
-            super.attached();
-
-            if (!this._daysBody) {
-                var table = <HTMLTableElement>this.$["days"];
-                this._daysBody = table.createTBody();
-                this._dayCells = [];
-
-                var fragment = document.createDocumentFragment();
-                for (var w = 0; w < 6; w++) {
-                    var cells = [];
-                    var tr = document.createElement("tr");
-
-                    for (var d = 0; d < 7; d++) {
-                        var td = document.createElement("td");
-
-                        var day = document.createElement("div");
-                        cells.push(day);
-
-                        td.appendChild(day);
-                        tr.appendChild(td);
-                    }
-
-                    this._dayCells.push(cells);
-                    fragment.appendChild(tr);
-                }
-
-                this._daysBody.appendChild(fragment);
-
-                fragment = document.createDocumentFragment();
-                for (var i = 0; i < 7; i++) {
-                    var th = document.createElement("th");
-                    th.textContent = Vidyano.CultureInfo.currentCulture.dateFormat.shortDayNames[i];
-
-                    fragment.appendChild(th);
-                }
-
-                table.tHead.appendChild(fragment);
-            }
-
-            if (!this._monthsAndYearsBody) {
-                this._monthsAndYearsBody = <HTMLElement>this.$["monthsAndYears"];
-                this._monthsAndYearsCells = [];
-
-                var fragment = document.createDocumentFragment();
-                for (var y = 0; y < 4; y++) {
-                    var row = document.createElement("div");
-                    row.className = "row flex horizontal layout";
-
-                    for (var d = 0; d < 3; d++) {
-                        var year = document.createElement("div");
-                        year.className = "col flex";
-
-                        this._monthsAndYearsCells.push(year);
-                        row.appendChild(year);
-                    }
-
-                    fragment.appendChild(row);
-                }
-
-                this._monthsAndYearsBody.appendChild(fragment);
-            }
-
-            this.zoom = "days";
-        }
-
-        private _zoomChanged() {
-            this._render();
-        }
-
-        private _selectedDateChanged() {
-            this._currentDate = this.selectedDate ? new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), this.selectedDate.getDate()) : null;
-            this._render();
-        }
-
-        private _render(zoom: string = this.zoom) {
-            if (!this._currentDate)
-                this._currentDate = new Date();
-
-            var year = this._currentDate.getFullYear();
-            var month = this._currentDate.getMonth();
-            var day = this._currentDate.getDate();
-
-            if (zoom == "days") {
-                this.header = Vidyano.CultureInfo.currentCulture.dateFormat.monthNames[month] + " " + year;
-
-                var totalDays = [31, moment([year]).isLeapYear() ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-                var daysInMonth = totalDays[month];
-                var firstWeekDay = new Date(year, month, 1).getDay();
-                var firstWeekDayIsSunday = Vidyano.CultureInfo.currentCulture.dateFormat.firstDayOfWeek == 0;
-
-                var prevMonth = month > 0 ? month - 1 : 11;
-                var prevMonthYear = prevMonth == 11 ? this._currentDate.getFullYear() - 1 : this._currentDate.getFullYear();
-                var daysInPrevMonth = totalDays[prevMonth];
-                var weekDay = (!firstWeekDayIsSunday ? firstWeekDay + 6 : firstWeekDay) % 7;
-                for (var i = 0; i < (weekDay > 0 ? weekDay : 7); i++) {
-                    var prevDay = daysInPrevMonth - (weekDay - i - 1 + (weekDay > 0 ? 0 : 7));
-                    this._dayCells[0][i].textContent = prevDay.toString();
-                    this._dayCells[0][i].setAttribute("data-day", prevDay.toString());
-                    this._dayCells[0][i].setAttribute("data-month", prevMonth.toString());
-                    this._dayCells[0][i].setAttribute("data-year", prevMonthYear.toString());
-                    this._dayCells[0][i].className = this._getDayClass(prevDay, prevMonth, prevMonthYear, "previous");
-                }
-
-                var week = 0;
-                var day = 1;
-                do {
-                    weekDay %= 7;
-
-                    if (weekDay == 0)
-                        week++;
-
-                    this._dayCells[week][weekDay].textContent = day.toString();
-                    this._dayCells[week][weekDay].setAttribute("data-day", day.toString());
-                    this._dayCells[week][weekDay].setAttribute("data-month", month.toString());
-                    this._dayCells[week][weekDay].setAttribute("data-year", year.toString());
-                    this._dayCells[week][weekDay].className = this._getDayClass(day, this._currentDate.getMonth(), this._currentDate.getFullYear());
-
-                    weekDay++;
-                }
-                while (++day <= daysInMonth);
-
-                var nextMonth = month < 11 ? month + 1 : 0;
-                var nextMonthYear = nextMonth == 0 ? this._currentDate.getFullYear() + 1 : this._currentDate.getFullYear();
-                for (var i = weekDay + 1; i <= 7; i++) {
-                    var nextDay = day = i - weekDay;
-                    this._dayCells[week][i - 1].textContent = nextDay.toString();
-                    this._dayCells[week][i - 1].setAttribute("data-day", nextDay.toString());
-                    this._dayCells[week][i - 1].setAttribute("data-month", nextMonth.toString());
-                    this._dayCells[week][i - 1].setAttribute("data-year", nextMonthYear.toString());
-                    this._dayCells[week][i - 1].className = this._getDayClass(nextDay, nextMonth, nextMonthYear, "next");
-                }
-
-                if (++week < 6) {
-                    if (day + 1 > daysInMonth)
-                        day = 0;
-
-                    for (var i = 1; i <= 7; i++) {
-                        var nextDay = day + i;
-                        this._dayCells[week][i - 1].textContent = nextDay.toString();
-                        this._dayCells[week][i - 1].setAttribute("data-day", nextDay.toString());
-                        this._dayCells[week][i - 1].setAttribute("data-month", nextMonth.toString());
-                        this._dayCells[week][i - 1].setAttribute("data-year", nextMonthYear.toString());
-                        this._dayCells[week][i - 1].className = this._getDayClass(nextDay, nextMonth, nextMonth == 0 ? this._currentDate.getFullYear() + 1 : this._currentDate.getFullYear(), "next");
-                    }
-                }
-
-                this._minYears = this._currentDate.getFullYear() - 4;
-            }
-            else if (zoom == "months") {
-                this.header = year.toString();
-                for (var i = 0; i < 12; i++) {
-                    this._monthsAndYearsCells[i].textContent = Vidyano.CultureInfo.currentCulture.dateFormat.shortMonthNames[i];
-                    this._monthsAndYearsCells[i].setAttribute("data-value", i.toString());
-                    if (this._currentDate.getFullYear() == year && this._currentDate.getMonth() == i)
-                        this._monthsAndYearsCells[i].className = "current";
-                    else
-                        this._monthsAndYearsCells[i].className = "";
-                }
-
-                this._minYears = this._currentDate.getFullYear() - 4;
-            }
-            else if (zoom == "years") {
-                this.header = this._minYears.toString() + " - " + (this._minYears + 12).toString();
-                for (var i = 0; i < 12; i++) {
-                    this._monthsAndYearsCells[i].textContent = (this._minYears + i).toString();
-                    this._monthsAndYearsCells[i].setAttribute("data-value", (this._minYears + i).toString());
-                    if (this._minYears + i == this._currentDate.getFullYear())
-                        this._monthsAndYearsCells[i].className = "current";
-                    else
-                        this._monthsAndYearsCells[i].className = "";
-                }
-            }
-        }
-
-        private _getDayClass(day: number, month: number, year: number, baseClass?: string): string {
-            var classNames = [];
-            if (baseClass)
-                classNames.push(baseClass);
-
-            if (this._today.getDate() == day && this._today.getMonth() == month && this._today.getFullYear() == year)
-                classNames.push("today");
-
-            if (this.selectedDate && this.selectedDate.getDate() == day && this.selectedDate.getMonth() == month && this.selectedDate.getFullYear() == year) {
-                classNames.push("selected");
-            }
-
-            return classNames.join(" ");
-        }
-
-        private _forward(e: Event) {
-            if (this.zoom == "days")
-                this._currentDate.setMonth(this._currentDate.getMonth() + 1);
-            else if (this.zoom == "months")
-                this._currentDate.setFullYear(this._currentDate.getFullYear() + 1);
-            else if (this.zoom == "years")
-                this._minYears += 12;
-
-            this._render();
-
-            e.stopPropagation();
-        }
-
-        private _fastForward(e: Event) {
-            this._currentDate.setFullYear(this._currentDate.getFullYear() + 1);
-            this._render();
-
-            e.stopPropagation();
-        }
-
-        private _backward(e: Event) {
-            if (this.zoom == "days")
-                this._currentDate.setMonth(this._currentDate.getMonth() - 1);
-            else if (this.zoom == "months")
-                this._currentDate.setFullYear(this._currentDate.getFullYear() - 1);
-            else if (this.zoom == "years")
-                this._minYears -= 12;
-
-            this._render();
-
-            e.stopPropagation();
-        }
-
-        private _fastBackward(e: Event) {
-            this._currentDate.setFullYear(this._currentDate.getFullYear() - 1);
-            this._render();
-
-            e.stopPropagation();
-        }
-
-        private _zoomOut(e: Event) {
-            if (this.zoom == "days")
-                this.zoom = "months";
-            else if (this.zoom == "months")
-                this.zoom = "years"
-
-            e.stopPropagation();
-        }
-
-        private _select(e: Event) {
-            if (this.zoom == "days") {
-                if (e.srcElement.hasAttribute("data-day")) {
-                    this._currentDate.setDate(parseInt(e.srcElement.getAttribute("data-day"), 10));
-                    this._currentDate.setMonth(parseInt(e.srcElement.getAttribute("data-month"), 10));
-                    this._currentDate.setFullYear(parseInt(e.srcElement.getAttribute("data-year"), 10));
-
-                    var newDate = new Date(this._currentDate.getFullYear(), this._currentDate.getMonth(), this._currentDate.getDate());
-                    if (this.selectedDate) {
-                        newDate.setHours(this.selectedDate.getHours(), this.selectedDate.getMinutes(), this.selectedDate.getSeconds(), this.selectedDate.getMilliseconds());
-                        newDate.netOffset(this.selectedDate.netOffset());
-                        newDate.netType(this.selectedDate.netType());
-                    }
-
-                    this.selectedDate = newDate;
-                    this._render();
-                }
-            } else if (e.srcElement.hasAttribute("data-value")) {
-                var value = parseInt(e.srcElement.getAttribute("data-value"), 10);
-                if (this.zoom == "months") {
-                    this._currentDate.setMonth(value);
-                    this.zoom = "days";
-                }
-                else if (this.zoom == "years") {
-                    this._currentDate.setFullYear(value);
-                    this.zoom = "months";
-                }
-            }
-
-            e.stopPropagation();
-        }
-
-        private _catchClick(e: MouseEvent) {
-            e.stopPropagation();
-        }
+    export interface IDatePickerCell {
+        type: string;
+        content?: string;
+        date?: moment.Moment;
+        monthOffset?: number;
     }
 
-    Vidyano.WebComponents.WebComponent.register(Vidyano.WebComponents.DatePicker, Vidyano.WebComponents, "vi", {
+    @WebComponent.register({
         properties: {
             zoom: {
                 type: String,
                 reflectToAttribute: true,
                 observer: "_zoomChanged"
             },
+            canFast: {
+                type: Boolean,
+                readOnly: true
+            },
+            currentDate: {
+                type: Object,
+                readOnly: true
+            },
             selectedDate: {
                 type: Object,
-                notify: true,
-                observer: "_selectedDateChanged"
+                notify: true
+            },
+            selectedDateMoment: {
+                type: Object,
+                computed: "_computeMoment(selectedDate)"
+            },
+            today: {
+                type: Object,
+                readOnly: true
+            },
+            monthMode: {
+                type: Boolean,
+                reflectToAttribute: true,
+                value: false
+            },
+            cells: {
+                type: Array,
+                readOnly: true
+            },
+            header: {
+                type: String,
+                readOnly: true
+            },
+            deferredCellsUpdate: {
+                type: Boolean,
+                readOnly: true,
+                value: true
             }
         },
+        observers: [
+            "_render(cells, currentDate, deferredCellsUpdate)"
+        ],
         listeners: {
-            "click": "_catchClick"
+            "tap": "_catchTap"
         }
-    });
+    })
+    export class DatePicker extends WebComponent {
+        private _daysBody: HTMLElement;
+        private _monthsAndYearsBody: HTMLElement;
+        private _dayCells: HTMLDivElement[][];
+        private _monthsAndYearsCells: HTMLDivElement[];
+        private _minYears: number;
+        private _scopedClassName: string;
+        readonly cells: IDatePickerCell[]; private _setCells: (cells: IDatePickerCell[]) => void;
+        readonly canFast: boolean; private _setCanFast: (canFast: boolean) => void;
+        readonly currentDate: moment.Moment; private _setCurrentDate: (date: moment.Moment) => void;
+        readonly today: moment.Moment; private _setToday: (date: moment.Moment) => void;
+        readonly header: string; private _setHeader: (header: string) => void;
+        readonly deferredCellsUpdate: boolean; private _setDeferredCellsUpdate: (defer: boolean) => void;
+        zoom: string;
+        selectedDate: Date;
+        monthMode: boolean;
+
+        attached() {
+            super.attached();
+
+            this.zoom = this.monthMode ? "months" : "days";
+            this._setToday(moment(new Date()));
+            this._setCurrentDate(moment(new Date()));
+        }
+
+        private _zoomChanged(zoom: string) {
+            if (zoom === "days") {
+                let dayNames = Vidyano.CultureInfo.currentCulture.dateFormat.shortDayNames.slice();
+                if (Vidyano.CultureInfo.currentCulture.dateFormat.firstDayOfWeek > 0)
+                    dayNames = dayNames.slice(Vidyano.CultureInfo.currentCulture.dateFormat.firstDayOfWeek).concat(dayNames.slice(0, Vidyano.CultureInfo.currentCulture.dateFormat.firstDayOfWeek));
+
+                const cells: IDatePickerCell[] = dayNames.map(d => {
+                    return {
+                        type: "weekday",
+                        content: d
+                    };
+                });
+
+                cells.push(...Enumerable.range(1, 42).select(d => {
+                    return { type: "day" };
+                }).toArray());
+
+                this._setCells(cells);
+                this._setCanFast(true);
+            }
+            else {
+                this._setCells(Enumerable.range(1, 12).select(d => {
+                    return { type: zoom.substr(0, zoom.length - 1) };
+                }).toArray());
+                this._setCanFast(false);
+            }
+        }
+
+        private _render(cells: IDatePickerCell[], currentDate: moment.Moment, deferredCellsUpdate: boolean) {
+            if (deferredCellsUpdate)
+                return;
+
+            const currentDateMoment = currentDate.clone();
+
+            if (this.zoom === "days") {
+                if (cells.length !== 42 + 7)
+                    return;
+
+                this._setHeader(`${CultureInfo.currentCulture.dateFormat.shortMonthNames[currentDateMoment.month()]} ${currentDateMoment.year()}`);
+
+                const loop = currentDateMoment.startOf("month").startOf(Vidyano.CultureInfo.currentCulture.dateFormat.firstDayOfWeek > 0 ? "isoWeek" : "week");
+                const end = loop.clone().add(6, "weeks");
+
+                let index = 7; // Skip weekday cells
+                do {
+                    this.set(`cells.${index}.date`, loop.clone());
+                    this.set(`cells.${index}.content`, loop.format("D"));
+                    this.set(`cells.${index}.monthOffset`, loop.isSame(currentDate, "month") ? 0 : (loop.isBefore(currentDate) ? -1 : 1));
+
+                    index++;
+                    loop.add(1, "days");
+                }
+                while (loop.isBefore(end));
+            }
+            else if (this.zoom === "months") {
+                this._setHeader(`${currentDateMoment.year()}`);
+
+                const loop = currentDateMoment.startOf("year");
+                const end = loop.clone().add(12, "months");
+
+                let index = 0;
+                do {
+                    this.set(`cells.${index}.date`, loop.clone());
+                    this.set(`cells.${index}.content`, Vidyano.CultureInfo.currentCulture.dateFormat.shortMonthNames[index]);
+
+                    index++;
+                    loop.add(1, "months");
+                }
+                while (loop.isBefore(end));
+            }
+            else if (this.zoom === "years") {
+                const loop = currentDateMoment.startOf("year").subtract(6, "years");
+                const end = loop.clone().add(12, "years");
+
+                let index = 0;
+                do {
+                    this.set(`cells.${index}.date`, loop.clone());
+                    this.set(`cells.${index}.content`, loop.year());
+
+                    index++;
+                    loop.add(1, "years");
+                }
+                while (loop.isBefore(end));
+
+                this._setHeader(`${cells[0].date.year()} - ${cells[cells.length - 1].date.year()}`);
+            }
+        }
+
+        private _isSelected(zoom: string, date: moment.Moment, selectedDate: moment.Moment): boolean {
+            if (zoom === "days")
+                return date.isSame(selectedDate, "day");
+            else if (zoom === "months" && this.monthMode)
+                return date.isSame(selectedDate, "month");
+
+            return false;
+        }
+
+        private _isToday(zoom: string, date: moment.Moment, today: moment.Moment): boolean {
+            if (zoom === "days")
+                return date.isSame(today, "day");
+            else if (zoom === "months")
+                return date.isSame(today, "month");
+
+            return date.isSame(today, "year");
+        }
+
+        private _isOther(monthOffset: number): boolean {
+            return !!monthOffset;
+        }
+
+        private _computeMoment(date: Date): moment.Moment {
+            return moment(date);
+        }
+
+        private _slow(e: Event) {
+            const amount = parseInt((<Vidyano.WebComponents.Button>e.currentTarget).getAttribute("n"));
+
+            if (this.zoom === "days")
+                this.currentDate.add(amount, "months");
+            else if(this.zoom === "months")
+                this.currentDate.add(amount, "years");
+            else
+                this.currentDate.add(amount * 12, "years");
+
+            this._setCurrentDate(this.currentDate.clone());
+
+            e.stopPropagation();
+        }
+
+        private _fast(e: Event) {
+            const amount = parseInt((<Vidyano.WebComponents.Button>e.currentTarget).getAttribute("n"));
+            this._setCurrentDate(this.currentDate.add(amount, "years").clone());
+
+            e.stopPropagation();
+        }
+
+        private _zoomOut(e: Event) {
+            if (this.zoom === "days")
+                this.zoom = "months";
+            else if (this.zoom === "months")
+                this.zoom = "years";
+
+            e.stopPropagation();
+        }
+
+        private _select(e: TapEvent) {
+            const cell = <IDatePickerCell>e.model.cell;
+            if (!cell || !cell.date)
+                return;
+
+            if (this.zoom === "days") {
+                const newSelectedDate = moment(this.selectedDate || new Date());
+                newSelectedDate.year(cell.date.year());
+                newSelectedDate.month(cell.date.month());
+                newSelectedDate.date(cell.date.date());
+
+                this.selectedDate = newSelectedDate.clone().toDate();
+
+                if (cell.monthOffset !== 0)
+                    this._setCurrentDate(this.currentDate.add(cell.monthOffset, "months").clone());
+            }
+            else if (this.zoom === "months") {
+                this._setCurrentDate(this.currentDate.clone().month(cell.date.month()));
+
+                if (!this.monthMode)
+                    this.zoom = "days";
+                else {
+                    const newSelectedDate = moment(this.selectedDate || new Date());
+                    newSelectedDate.date(1);
+                    newSelectedDate.month(cell.date.month());
+                    newSelectedDate.year(cell.date.year());
+
+                    this.selectedDate = newSelectedDate.clone().toDate();
+                }
+            }
+            else if (this.zoom === "years") {
+                this._setCurrentDate(this.currentDate.year(cell.date.year()).clone());
+                this.zoom = "months";
+            }
+
+            e.stopPropagation();
+        }
+
+        private _opening() {
+            this._setCurrentDate(this.selectedDate ? moment(this.selectedDate) : moment(new Date()));
+            this.zoom = this.monthMode ? "months" : "days";
+
+            this._setDeferredCellsUpdate(false);
+        }
+
+        private _catchTap(e: MouseEvent) {
+            e.stopPropagation();
+        }
+    }
 }

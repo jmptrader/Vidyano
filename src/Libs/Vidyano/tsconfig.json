@@ -1,0 +1,21 @@
+{
+  "compileOnSave": true,
+  "compilerOptions": {
+    "target": "es5",
+    "removeComments": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "noEmitHelpers": true,
+    "outFile": "vidyano.js",
+    "declaration": true
+  },
+  "include": [
+    "_reference.ts",
+    "**/*.ts"
+  ],
+  "exclude": [
+    "vidyano.d.ts"
+  ]
+}

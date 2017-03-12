@@ -1,0 +1,124 @@
+@import "../_vars.scss";
+
+$border-color: #ddd;
+
+:host {
+    display: block;
+    position: relative;
+    border: 1px solid $border-color;
+    @include layout-horizontal();
+
+    vi-popup {
+        @include flex();
+
+        #content {
+            -moz-transform: translate(0, 1px);
+            -ms-transform: translate(0, 1px);
+            -o-transform: translate(0, 1px);
+            -webkit-transform: translate(0, 1px);
+            transform: translate(0, 1px);
+        }
+
+        [header] {
+            @include flex();
+            @include layout-horizontal();
+            @include relative();
+
+            .suggestions {
+                z-index: 1;
+                padding-left: var(--theme-h5);
+                position: absolute;
+                left: 0;
+                height: calc(var(--theme-h2) - 2px);
+                line-height: calc(var(--theme-h2) - 2px);
+
+                span {
+                    float: left;
+
+                    &:first-child {
+                        color: transparent;
+                    }
+
+                    &:nth-child(2) {
+                        color: #CCC;
+                    }
+                }
+            }
+
+            input {
+                @include flex();
+                z-index: 2;
+                border: none;
+                height: calc(var(--theme-h2) - 2px);
+                line-height: calc(var(--theme-h2) - 2px);
+                padding-left: var(--theme-h5);
+                background-color: transparent;
+                @apply(--vi-select-input);
+
+                &[disabled] {
+                    color: inherit !important;
+                    @apply(--vi-select-input-disabled);
+                }
+
+                &:hover {
+                    @apply(--vi-select-input-hover);
+                }
+
+                &::-ms-clear {
+                    display: none;
+                }
+            }
+
+            vi-icon {
+                height: calc(var(--theme-h2) - 2px);
+                width: calc(var(--theme-h2) - 2px);
+                fill: var(--vi-select-icon-color, --theme-foreground);
+                @apply(--vi-select-icon);
+            }
+        }
+
+        [content] {
+            max-height: calc(var(--theme-h2) * 10);
+            overflow-y: auto;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+
+            li {
+                padding-left: var(--theme-h5);
+                line-height: calc(var(--theme-h2) - 2px);
+                height: calc(var(--theme-h2) - 2px);
+
+                &:not(.group) {
+                    cursor: pointer;
+
+                    &:hover {
+                        background-color: var(--theme-color-faint);
+                    }
+                }
+
+                &.group {
+                    color: #888;
+                }
+
+                &[group] {
+                    padding-left: var(--theme-h3);
+                }
+            }
+
+            li[suggested], &:not([filtering]) li[selected] {
+                color: white;
+                background-color: var(--theme-color);
+
+                &:hover {
+                    background-color: var(--theme-color-light);
+                }
+            }
+        }
+
+        &[disabled] [header] vi-icon {
+            opacity: 0.25;
+            cursor: default;
+        }
+    }
+}

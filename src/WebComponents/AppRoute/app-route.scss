@@ -1,0 +1,14 @@
+@import "../vars.scss";
+
+:host {
+    @include flex();
+    @include layout-horizontal();
+
+    ::content > * {
+        @include flex();
+    }
+
+    &:not(.active) {
+        display: none !important;
+    }
+}

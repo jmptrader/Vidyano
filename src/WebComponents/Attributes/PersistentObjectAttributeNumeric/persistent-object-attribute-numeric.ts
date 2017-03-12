@@ -1,9 +1,33 @@
-﻿module Vidyano.WebComponents.Attributes {
+﻿namespace Vidyano.WebComponents.Attributes {
+    "use strict";
+
+    @PersistentObjectAttribute.register({
+        properties: {
+            unitBefore: {
+                type: String,
+                reflectToAttribute: true,
+                value: null
+            },
+            unitAfter: {
+                type: String,
+                reflectToAttribute: true,
+                value: null
+            },
+            focused: {
+                type: Boolean,
+                reflectToAttribute: true,
+                readOnly: true
+            }
+        }
+    })
     export class PersistentObjectAttributeNumeric extends WebComponents.Attributes.PersistentObjectAttribute {
         private _allowDecimal: boolean;
         private _isNullable: boolean;
         private _decimalSeparator: string;
         private _dataType: string;
+        readonly focused: boolean; private _setFocused: (val: boolean) => void;
+        unitBefore: string;
+        unitAfter: string;
 
         private static _decimalTypes = ["NullableDecimal", "Decimal", "NullableSingle", "Single", "NullableDouble", "Double"];
         private static _unsignedTypes = ["Byte", "NullableByte", "UInt16", "NullableUInt16", "UInt32", "NullableUInt32", "UInt64", "NullableUInt64"];
@@ -13,8 +37,15 @@
 
             if (this.attribute) {
                 this._allowDecimal = PersistentObjectAttributeNumeric._decimalTypes.indexOf(this.attribute.type) >= 0;
-                this._isNullable = this.attribute.type.startsWith("Nullable");
+                this._isNullable = this.attribute.type.startsWith("Nullable") && !this.attribute.parent.isBulkEdit;
                 this._decimalSeparator = CultureInfo.currentCulture.numberFormat.numberDecimalSeparator;
+
+                const displayFormat = this.attribute.getTypeHint("displayformat", null, null, true);
+                if (displayFormat) {
+                    const groups = /^([^{]*)({.+?})(.*)$/.exec(displayFormat);
+                    this.unitBefore = groups[1];
+                    this.unitAfter = groups[3];
+                }
             }
         }
 
@@ -24,38 +55,87 @@
                 return;
             }
 
-            var value = this.attribute.value.toString();
+            const attributeValue = this.attribute.value.toString();
+            let myValue = this.value;
+            if (this.value && this._decimalSeparator !== ".")
+                myValue = this.value.replace(this._decimalSeparator, ".");
+
+            if (this.focused) {
+                if (myValue === "" || myValue === "-")
+                    myValue = this.attribute.isRequired ? "0" : "";
+                else if (myValue.endsWith("."))
+                    myValue = myValue.trimEnd(".");
+            }
+
+            if (!!myValue && this._canParse(myValue) && new BigNumber(myValue).equals(this.attribute.value))
+                return;
+
             if (this._decimalSeparator !== ".")
-                this.value = value.replace(".", this._decimalSeparator);
+                this.value = attributeValue.replace(".", this._decimalSeparator);
             else
-                this.value = value;
+                this.value = attributeValue;
         }
 
-        protected _valueChanged(newValue: any) {
+        protected async _valueChanged(newValue: string, oldValue: string) {
+            if (!this.attribute)
+                return;
+
             if (newValue != null && this._decimalSeparator !== ".")
                 newValue = newValue.replace(this._decimalSeparator, ".");
 
-            if (this.attribute)
-                this.attribute.setValue(newValue, false);
+            try {
+                if (this.focused) {
+                    if (newValue === "" || newValue === "-")
+                        newValue = this.attribute.isRequired ? "0" : "";
+                    else if (newValue.endsWith("."))
+                        newValue = newValue.trimEnd(".");
+                }
+
+                if (!this._canParse(newValue)) {
+                    this.value = oldValue;
+                    return;
+                }
+
+                const bigNumberValue = !StringEx.isNullOrEmpty(newValue) ? new BigNumber(newValue) : null;
+                if (this.attribute.value instanceof BigNumber && bigNumberValue != null && bigNumberValue.equals(this.attribute.value))
+                    return;
+
+                await this.attribute.setValue(bigNumberValue, false).catch(Vidyano.noop);
+            } catch (e) {
+                this.notifyPath("value", this.attribute.value);
+            }
         }
 
         private _editInputBlur(e: Event) {
+            this._setFocused(false);
+
             if (this.attribute && this.attribute.isValueChanged && this.attribute.triggersRefresh) {
-                var newValue = this.value;
+                let newValue = this.value;
                 if (newValue != null && this._decimalSeparator !== ".")
                     newValue = newValue.replace(this._decimalSeparator, ".");
 
                 this.attribute.value = newValue;
             }
 
-            var input = <HTMLInputElement>e.target;
-            if (input.value === "" || input.value == null)
-                input.value = this.attribute.value;
+            let attributeValue = this.attribute.value ? this.attribute.value.toString() : (this.attribute.isRequired || this.value ? "0" : "");
+            if (attributeValue !== this.value) {
+                if (this._decimalSeparator !== ".")
+                    this.value = attributeValue.replace(".", this._decimalSeparator);
+                else
+                    this.value = attributeValue;
+            }
+        }
+
+        private _editInputFocus(e: Event) {
+            this._setFocused(true);
         }
 
         private _canParse(value: string): boolean {
             if (!value && this.attribute.type.startsWith("Nullable"))
                 return true;
+
+            if (value && value.startsWith(this._decimalSeparator))
+                value = `0${value}`;
 
             switch (this.attribute.type) {
                 case "Byte":
@@ -106,25 +186,24 @@
         }
 
         private _keypress(e: KeyboardEvent): void {
-            var keyCode = e.keyCode || e.which;
-            
-            if (keyCode == Keyboard.KeyCodes.backspace || keyCode == Keyboard.KeyCodes.tab || keyCode == Keyboard.KeyCodes.shift || keyCode == Keyboard.KeyCodes.control || keyCode == Keyboard.KeyCodes.alt || 
-                keyCode == Keyboard.KeyCodes.leftarrow || keyCode == Keyboard.KeyCodes.rightarrow || keyCode == Keyboard.KeyCodes.uparrow || keyCode == Keyboard.KeyCodes.downarrow)
+            const keyCode = e.keyCode || e.which;
+
+            if (keyCode === Keyboard.KeyCodes.tab || keyCode === Keyboard.KeyCodes.shift || keyCode === Keyboard.KeyCodes.control || keyCode === Keyboard.KeyCodes.alt || keyCode === Keyboard.KeyCodes.leftarrow || keyCode === Keyboard.KeyCodes.rightarrow || keyCode === Keyboard.KeyCodes.uparrow || keyCode === Keyboard.KeyCodes.downarrow)
                 return;
 
-            var input = <HTMLInputElement>e.target;
-            var value = input.value;
-            var carretIndex = input.selectionStart;
-            if (input.selectionEnd != carretIndex)
+            const input = <HTMLInputElement>e.target;
+            let value = input.value;
+            const carretIndex = input.selectionStart;
+            if (input.selectionEnd !== carretIndex)
                 value = value.slice(0, Math.min(input.selectionEnd, carretIndex)) + value.slice(Math.max(input.selectionEnd, carretIndex));
 
             if (keyCode < Keyboard.KeyCodes.zero || keyCode > Keyboard.KeyCodes.nine) {
-                if ((keyCode == Keyboard.KeyCodes.comma || keyCode == Keyboard.KeyCodes.period) && !value.contains(this._decimalSeparator) && this._allowDecimal) {
-                    input.value = value.insert(this._decimalSeparator, carretIndex);
+                if ((keyCode === Keyboard.KeyCodes.comma || keyCode === Keyboard.KeyCodes.period) && !value.contains(this._decimalSeparator) && this._allowDecimal) {
+                    this.value = input.value = value.insert(this._decimalSeparator, carretIndex);
                     this._setCarretIndex(input, carretIndex + 1);
                 }
-                else if (keyCode == Keyboard.KeyCodes.subtract && !value.contains("-") && carretIndex == 0 && PersistentObjectAttributeNumeric._unsignedTypes.indexOf(this.attribute.type) == -1) {
-                    input.value = value.insert("-", carretIndex);
+                else if (keyCode === Keyboard.KeyCodes.subtract && !value.contains("-") && carretIndex === 0 && PersistentObjectAttributeNumeric._unsignedTypes.indexOf(this.attribute.type) === -1) {
+                    this.value = input.value = value.insert("-", carretIndex);
                     this._setCarretIndex(input, carretIndex + 1);
                 }
 
@@ -133,7 +212,31 @@
             else if (!this._canParse(value.insert(String.fromCharCode(keyCode), carretIndex)))
                 e.preventDefault();
         }
-    }
 
-    PersistentObjectAttribute.registerAttribute(PersistentObjectAttributeNumeric);
+        private _computeDisplayValueWithUnit(value: number, displayValue: string, unit: string, unitPosition: string): string {
+            let result = value != null && unit && unitPosition && unitPosition.toLowerCase() === "before" ? unit + " " : "";
+
+            result += displayValue;
+            result += value != null && unit && unitPosition && unitPosition.toLowerCase() === "after" ? " " + unit : "";
+
+            return result;
+        }
+
+        private _computeBeforeUnit(unit: string, position: string, value: number, hideOnNoValue?: boolean): string {
+            if (!unit || !position)
+                return unit;
+
+            if (hideOnNoValue && !value)
+                return "";
+
+            return position === "before" ? unit : "";
+        }
+
+        private _computeAfterUnit(unit: string, position: string): string {
+            if (!unit || !position)
+                return unit;
+
+            return position === "after" ? unit : "";
+        }
+    }
 }

@@ -1,6 +1,24 @@
-﻿module Vidyano.WebComponents {
-    export class Spinner extends WebComponent {
-    }
+﻿namespace Vidyano.WebComponents {
+    "use strict";
 
-    Vidyano.WebComponents.WebComponent.register(Vidyano.WebComponents.Spinner, Vidyano.WebComponents);
+    @WebComponent.register({
+        properties: {
+            color: {
+                type: String,
+                reflectToAttribute: true
+            }
+        },
+        observers: [
+            "_updateColor(color, isAttached)"
+        ]
+    })
+    export class Spinner extends WebComponent {
+        private _updateColor(color: string, isAttached: boolean) {
+            if (!isAttached)
+                return;
+
+            this.customStyle["--vi-spinner-color"] = color;
+            this.updateStyles();
+        }
+    }
 }

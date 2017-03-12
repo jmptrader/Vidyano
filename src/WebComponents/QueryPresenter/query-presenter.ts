@@ -1,89 +1,15 @@
-module Vidyano.WebComponents {
-    export class QueryPresenter extends WebComponent {
-        private static _queryComponentLoader: Promise<any>;
-        private _cacheEntry: QueryAppCacheEntry;
-        queryId: string;
-        query: Vidyano.Query;
+namespace Vidyano.WebComponents {
+    "use strict";
 
-        private _setLoading: (loading: boolean) => void;
-        private _setError: (error: string) => void;
-
-        private _activating(e: CustomEvent, detail: { route: AppRoute; parameters: any; }) {
-            this._setApp(detail.route.app);
-            
-            this._cacheEntry = <QueryAppCacheEntry>this.app.cache(new QueryAppCacheEntry(detail.parameters.id));
-            if (this._cacheEntry && this._cacheEntry.query)
-                this.query = this._cacheEntry.query;
-            else {
-                this.queryId = this.query = undefined;
-                this.queryId = detail.parameters.id;
-            }
-        }
-
-        private _computeQuery() {
-            if (this.query && this.query.id == this.queryId)
-                return;
-
-            if (this.queryId) {
-                if(this.query)
-                    this.query = null;
-
-                this._setLoading(true);
-                
-                this.app.service.getQuery(this.queryId).then(query => {
-                    if (query.id == this.queryId) {
-                        this._cacheEntry = <QueryAppCacheEntry>this.app.cache(new QueryAppCacheEntry(query.id));
-                        this.query = this._cacheEntry.query = query;
-                    }
-
-                    this._setLoading(false);
-                }, e => {
-                        this._setLoading(false);
-                    });
-            }
-            else
-                this.query = null;
-        }
-
-        private _queryChanged(query: Vidyano.Query, oldQuery: Vidyano.Query) {
-            if (oldQuery)
-                this.empty();
-
-            if (query) {
-                if (!Vidyano.WebComponents.QueryPresenter._queryComponentLoader) {
-                    Vidyano.WebComponents.QueryPresenter._queryComponentLoader = new Promise(resolve => {
-                        this.importHref(this.resolveUrl("../Query/query.html"), e => {
-                            resolve(true);
-                        }, err => {
-                                console.error(err);
-                                resolve(false);
-                            });
-                    });
-                }
-
-                this._renderQuery(query);
-            }
-        }
-
-        private _renderQuery(query: Vidyano.Query) {
-            Vidyano.WebComponents.QueryPresenter._queryComponentLoader.then(() => {
-                if (query !== this.query)
-                    return;
-
-                var queryComponent = new Vidyano.WebComponents.Query();
-                queryComponent.query = query;
-                Polymer.dom(this).appendChild(queryComponent);
-
-                this._setLoading(false);
-            });
-        }
+    interface IQueryPresenterRouteParameters {
+        programUnitName: string;
+        id: string;
     }
 
-    WebComponent.register(QueryPresenter, WebComponents, "vi", {
+    @WebComponent.register({
         properties: {
             queryId: {
                 type: String,
-                observer: "_computeQuery",
                 reflectToAttribute: true
             },
             query: {
@@ -106,8 +32,113 @@ module Vidyano.WebComponents {
                 computed: "_computeHasError(error)"
             }
         },
+        observers: [
+            "_updateQuery(queryId, app)",
+            "_updateTitle(query.labelWithTotalItems)"
+        ],
         listeners: {
-            "activating": "_activating"
+            "app-route-activate": "_activate"
+        },
+        forwardObservers: [
+            "query.labelWithTotalItems"
+        ]
+    })
+    export class QueryPresenter extends WebComponent {
+        private _customTemplate: PolymerTemplate;
+        private _cacheEntry: QueryAppCacheEntry;
+        readonly loading: boolean; private _setLoading: (loading: boolean) => void;
+        readonly error: string; private _setError: (error: string) => void;
+        queryId: string;
+        query: Vidyano.Query;
+
+        attached() {
+            if (!this._customTemplate)
+                this._customTemplate = <PolymerTemplate><any>this.querySelector("template[is='dom-template']");
+
+            super.attached();
         }
-    });
+
+        private _activate(e: CustomEvent, { parameters }: { parameters: IQueryPresenterRouteParameters; }) {
+            this._cacheEntry = <QueryAppCacheEntry>this.app.cache(new QueryAppCacheEntry(parameters.id));
+            if (this._cacheEntry && this._cacheEntry.query)
+                this.query = this._cacheEntry.query;
+            else {
+                this.queryId = this.query = undefined;
+                this.queryId = parameters.id;
+            }
+
+            this.fire("title-changed", { title: this.query ? this.query.label : null }, { bubbles: true });
+        }
+
+        private _computeHasError(error: string): boolean {
+            return !StringEx.isNullOrEmpty(error);
+        }
+
+        private async _updateQuery(queryId: string, app: Vidyano.WebComponents.App) {
+            this._setError(null);
+
+            if ((this.query && queryId && this.query.id.toUpperCase() === queryId.toUpperCase()))
+                return;
+
+            if (!this._customTemplate)
+                this.empty();
+
+            if (this.queryId) {
+                if (this.query)
+                    this.query = null;
+
+                try {
+                    this._setLoading(true);
+
+                    const query = await app.service.getQuery(this.queryId);
+                    if (query.id.toUpperCase() === this.queryId.toUpperCase()) {
+                        this._cacheEntry = <QueryAppCacheEntry>this.app.cache(new QueryAppCacheEntry(query.id));
+                        this.query = this._cacheEntry.query = query;
+                    }
+                }
+                catch (e) {
+                    this._setError(e);
+                }
+                finally {
+                    this._setLoading(false);
+                }
+            }
+            else
+                this.query = null;
+        }
+
+        private async _queryChanged(query: Vidyano.Query, oldQuery: Vidyano.Query) {
+            if (this.isAttached && oldQuery)
+                this.empty();
+
+            if (query) {
+                if(this.queryId !== query.id)
+                    this.queryId = query.id;
+
+                if (!this._customTemplate) {
+                    await this.app.importComponent("Query");
+                    this._renderQuery(query);
+                }
+                else
+                    Polymer.dom(this).appendChild(this._customTemplate.stamp({ query: query }).root);
+            }
+
+            this.fire("title-changed", { title: query ? query.labelWithTotalItems : null }, { bubbles: true });
+        }
+
+        private _renderQuery(query: Vidyano.Query) {
+            if (query !== this.query)
+                return;
+
+            const queryComponent = new Vidyano.WebComponents.Query();
+            queryComponent.query = query;
+            Polymer.dom(this).appendChild(queryComponent);
+
+            this._setLoading(false);
+        }
+
+        private _updateTitle(title: string) {
+            this.fire("title-changed", { title: title }, { bubbles: true });
+        }
+    }
 }

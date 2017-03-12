@@ -1,0 +1,17 @@
+﻿<link rel="import" href="../Button/button.html" />
+
+<dom-module id="vi-persistent-object-attribute-label">
+    <template>
+        <link rel="stylesheet" href="persistent-object-attribute-label.css" />
+        <label>[[attribute.label]]</label>
+        <span class="required">[[translateMessage('Required', isAttached)]]</span>
+        <div class="locked">
+            <vi-icon source="Lock"></vi-icon>
+        </div>
+        <button is="vi-button" inverse class="info" on-tap="_showTooltip" hidden$="[[!hasToolTip]]" tabindex="-1">
+            <vi-icon source="Info"></vi-icon>
+        </button>
+    </template>
+</dom-module>
+
+<script src="persistent-object-attribute-label.js"></script>

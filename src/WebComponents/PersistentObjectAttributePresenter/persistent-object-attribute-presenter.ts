@@ -1,7 +1,92 @@
-module Vidyano.WebComponents {
-    export class PersistentObjectAttributePresenter extends WebComponent {
+namespace Vidyano.WebComponents {
+    "use strict";
+
+    @WebComponent.register({
+        properties: {
+            attribute: Object,
+            noLabel: {
+                type: Boolean,
+                reflectToAttribute: true,
+                value: false
+            },
+            editing: {
+                type: Boolean,
+                reflectToAttribute: true,
+                computed: "_computeEditing(attribute.parent.isEditing, nonEdit)"
+            },
+            nonEdit: {
+                type: Boolean,
+                reflectToAttribute: true,
+                value: false,
+                observer: "_nonEditChanged"
+            },
+            required: {
+                type: Boolean,
+                reflectToAttribute: true,
+                computed: "_computeRequired(attribute, attribute.isRequired, attribute.value)"
+            },
+            disabled: {
+                type: Boolean,
+                reflectToAttribute: true,
+                value: false,
+                observer: "_disabledChanged"
+            },
+            readOnly: {
+                type: Boolean,
+                reflectToAttribute: true,
+                computed: "_computeReadOnly(attribute.isReadOnly, attribute.parent.isFrozen, disabled)"
+            },
+            bulkEdit: {
+                type: Boolean,
+                reflectToAttribute: true,
+                computed: "attribute.parent.isBulkEdit"
+            },
+            loading: {
+                type: Boolean,
+                reflectToAttribute: true,
+                readOnly: true,
+                value: true,
+                observer: "_loadingChanged"
+            },
+            height: {
+                type: Number,
+                reflectToAttribute: true
+            },
+            hidden: {
+                type: Boolean,
+                reflectToAttribute: true,
+                computed: "_isHidden(attribute.isVisible)"
+            },
+            hasError: {
+                type: Boolean,
+                reflectToAttribute: true,
+                computed: "_computeHasError(attribute.validationError)"
+            }
+        },
+        hostAttributes: {
+            "tabindex": "-1"
+        },
+        listeners: {
+            "focus": "_onFocus"
+        },
+        observers: [
+            "_attributeChanged(attribute, isAttached)"
+        ],
+        forwardObservers: [
+            "attribute.parent.isEditing",
+            "attribute.parent.isFrozen",
+            "attribute.isRequired",
+            "attribute.isReadOnly",
+            "attribute.isVisible",
+            "attribute.value",
+            "attribute.isValueChanged",
+            "attribute.validationError",
+            "attribute.parent.isBulkEdit"
+        ]
+    })
+    export class PersistentObjectAttributePresenter extends WebComponent implements IConfigurable {
         private static _attributeImports: {
-            [key: string]: Promise<boolean>;
+            [key: string]: Promise<any>;
         } = {
             "AsDetail": undefined,
             "BinaryFile": undefined,
@@ -23,65 +108,95 @@ module Vidyano.WebComponents {
             "User": undefined
         };
 
-        private _templatePresenter: Vidyano.WebComponents.TemplatePresenter;
+        private _renderedAttribute: Vidyano.PersistentObjectAttribute;
+        private _renderedAttributeElement: Vidyano.WebComponents.Attributes.PersistentObjectAttribute;
+        private _customTemplate: PolymerTemplate;
+        private _focusQueued: boolean;
+        readonly loading: boolean; private _setLoading: (loading: boolean) => void;
         attribute: Vidyano.PersistentObjectAttribute;
+        nonEdit: boolean;
+        noLabel: boolean;
+        height: number;
+        disabled: boolean;
+        readOnly: boolean;
 
-        private _setLoading: (loading: boolean) => void;
+        attached() {
+            if (!this._customTemplate)
+                this._customTemplate = <PolymerTemplate><any>Polymer.dom(this).querySelector("template[is='dom-template']");
+
+            super.attached();
+        }
+
+        queueFocus() {
+            const activeElement = document.activeElement;
+            this.focus();
+
+            if (activeElement !== document.activeElement)
+                this._focusQueued = true;
+        }
 
         private _attributeChanged(attribute: Vidyano.PersistentObjectAttribute, isAttached: boolean) {
-            if (Polymer.dom(this).children.length > 0)
-                this.empty();
+            if (this._renderedAttribute) {
+                Polymer.dom(this.$["content"]).children.forEach(c => Polymer.dom(this.$["content"]).removeChild(c));
+                this._renderedAttributeElement = this._renderedAttribute = null;
+            }
 
             if (attribute && isAttached) {
                 this._setLoading(true);
 
-                var attributeType: string;
+                if (!this.getAttribute("height"))
+                    this.height = this.app.configuration.getAttributeConfig(attribute).calculateHeight(attribute);
+
+                let attributeType: string;
                 if (Vidyano.Service.isNumericType(attribute.type))
                     attributeType = "Numeric";
                 else if (Vidyano.Service.isDateTimeType(attribute.type))
                     attributeType = "DateTime";
+                else if (attribute.parent.isBulkEdit && (attribute.type === "YesNo" || attribute.type === "Boolean"))
+                    attributeType = "NullableBoolean";
                 else
                     attributeType = attribute.type;
 
-                if (Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attribute.type] !== undefined) {
+                if (Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attributeType] !== undefined) {
                     this._renderAttribute(attribute, attributeType);
                     return;
                 }
 
-                var typeImport = this._getAttributeTypeImportInfo(attributeType);
+                const typeImport = this._getAttributeTypeImportInfo(attributeType);
                 if (!typeImport) {
-                    Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attribute.type] = Promise.resolve(false);
+                    Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attributeType] = Promise.resolve(false);
                     this._renderAttribute(attribute, attributeType);
                     return;
                 }
 
-                var synonymResolvers: ((result: {}) => void)[];
+                let synonymResolvers: ((result: {}) => void)[];
                 if (typeImport.synonyms) {
                     synonymResolvers = [];
                     typeImport.synonyms.forEach(s => Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[s] = new Promise(resolve => { synonymResolvers.push(resolve); }));
                 }
 
-                Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attribute.type] = new Promise(resolve => {
-                    this.importHref(this.resolveUrl("../Attributes/" + typeImport.filename), e => {
-                        resolve(true);
+                Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attributeType] = new Promise(async (resolve) => {
+                    try {
+                        await this.importHref(this.resolveUrl("../Attributes/" + typeImport.filename));
                         if (synonymResolvers)
                             synonymResolvers.forEach(resolver => resolver(true));
 
                         this._renderAttribute(attribute, attributeType);
-                    }, err => {
-                            console.error(err);
-
-                            Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attribute.type] = Promise.resolve(false);
-                            this._setLoading(false);
-                        });
+                        resolve(true);
+                    }
+                    catch (err) {
+                        Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attributeType] = Promise.resolve(false);
+                        this._setLoading(false);
+                        resolve(false);
+                    }
                 });
             }
         }
 
         private _getAttributeTypeImportInfo(type: string): { filename: string; synonyms?: string[]; } {
-            var synonyms: string[];
-            for (var key in Vidyano.WebComponents.Attributes.PersistentObjectAttribute.typeSynonyms) {
-                var typeSynonyms = Vidyano.WebComponents.Attributes.PersistentObjectAttribute.typeSynonyms[key];
+            let synonyms: string[];
+            for (const key in Vidyano.WebComponents.Attributes.PersistentObjectAttribute.typeSynonyms) {
+                const typeSynonyms = Vidyano.WebComponents.Attributes.PersistentObjectAttribute.typeSynonyms[key];
                 if (key === type)
                     synonyms = typeSynonyms;
                 else if (typeSynonyms.indexOf(type) >= 0) {
@@ -112,8 +227,8 @@ module Vidyano.WebComponents {
                 return { filename: "PersistentObjectAttributeKeyValueList/persistent-object-attribute-key-value-list.html", synonyms: synonyms };
             else if (type === "MultiLineString")
                 return { filename: "PersistentObjectAttributeMultiLineString/persistent-object-attribute-multi-line-string.html", synonyms: synonyms };
-            //else if (type === "MultiString")
-            //    return { filename: "PersistentObjectAttributeMultiString/persistent-object-attribute-multi-string.html", synonyms: synonyms };
+            else if (type === "MultiString")
+               return { filename: "PersistentObjectAttributeMultiString/persistent-object-attribute-multi-string.html", synonyms: synonyms };
             else if (type === "Numeric")
                 return { filename: "PersistentObjectAttributeNumeric/persistent-object-attribute-numeric.html", synonyms: synonyms };
             else if (type === "Password")
@@ -130,79 +245,114 @@ module Vidyano.WebComponents {
             return null;
         }
 
-        private _renderAttribute(attribute: Vidyano.PersistentObjectAttribute, attributeType: string) {
-            Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attribute.type].then(() => {
-                if (attribute !== this.attribute)
-                    return;
+        private async _renderAttribute(attribute: Vidyano.PersistentObjectAttribute, attributeType: string) {
+            await Vidyano.WebComponents.PersistentObjectAttributePresenter._attributeImports[attributeType];
+            if (!this.isAttached || attribute !== this.attribute || this._renderedAttribute === attribute)
+                return;
 
-                try {
-                    var config = this.app.configuration.getAttributeConfig(attribute);
-                    if (config && config.template) {
-                        if (!this._templatePresenter)
-                            this._templatePresenter = new Vidyano.WebComponents.TemplatePresenter(config.template, "attribute");
+            let focusTarget: HTMLElement;
+            try {
+                if (this._customTemplate)
+                    Polymer.dom(focusTarget = this.$["content"]).appendChild(this._customTemplate.stamp({ attribute: attribute }).root);
+                else {
+                    const config = <PersistentObjectAttributeConfig>this.app.configuration.getAttributeConfig(attribute);
+                    this.noLabel = this.noLabel || (config && !!config.noLabel);
 
-                        this._templatePresenter.dataContext = attribute;
+                    if (!!config && config.hasTemplate)
+                        Polymer.dom(this.$["content"]).appendChild(config.stamp(attribute, config.as || "attribute"));
+                    else {
+                        this._renderedAttributeElement = <WebComponents.Attributes.PersistentObjectAttribute>new (Vidyano.WebComponents.Attributes["PersistentObjectAttribute" + attributeType] || Vidyano.WebComponents.Attributes.PersistentObjectAttributeString)();
+                        this._renderedAttributeElement.classList.add("attribute");
+                        this._renderedAttributeElement.attribute = attribute;
+                        this._renderedAttributeElement.nonEdit = this.nonEdit;
+                        this._renderedAttributeElement.disabled = this.disabled;
 
-                        if (!this._templatePresenter.isAttached)
-                            Polymer.dom(this).appendChild(this._templatePresenter);
-
-                        return;
+                        Polymer.dom(this.$["content"]).appendChild(focusTarget = this._renderedAttributeElement);
                     }
-
-                    var child = <WebComponents.Attributes.PersistentObjectAttribute>new (Vidyano.WebComponents.Attributes["PersistentObjectAttribute" + attributeType] || Vidyano.WebComponents.Attributes.PersistentObjectAttributeString)();
-                    Polymer.dom(this).appendChild(child.asElement);
-
-                    child.attribute = attribute;
                 }
-                finally {
-                    this._setLoading(false);
+
+                this._renderedAttribute = attribute;
+            }
+            finally {
+                this._setLoading(false);
+
+                if (this._focusQueued) {
+                    Polymer.dom(focusTarget).flush();
+
+                    const activeElement = document.activeElement;
+                    let retry = 0;
+                    const interval = setInterval(() => {
+                        if (++retry > 20 || document.activeElement !== activeElement)
+                            return clearInterval(interval);
+
+                        focusTarget.focus();
+                    }, 25);
+
+                    this._focusQueued = false;
+                }
+            }
+        }
+
+        private _computeEditing(isEditing: boolean, nonEdit: boolean): boolean {
+            return !nonEdit && isEditing;
+        }
+
+        private _nonEditChanged(nonEdit: boolean) {
+            if (this._renderedAttributeElement)
+                this._renderedAttributeElement.nonEdit = nonEdit;
+        }
+
+        private _disabledChanged(disabled: boolean) {
+            if (!this._renderedAttributeElement)
+                return;
+
+            this._renderedAttributeElement.disabled = disabled;
+        }
+
+        private _computeRequired(attribute: Vidyano.PersistentObjectAttribute, required: boolean, value: any): boolean {
+            return required && (value == null || (attribute && attribute.rules && attribute.rules.contains("NotEmpty") && value === ""));
+        }
+
+        private _computeReadOnly(isReadOnly: boolean, isFrozen: boolean, disabled: boolean): boolean {
+            return isReadOnly || disabled || isFrozen;
+        }
+
+        private _computeHasError(validationError: string): boolean {
+            return !StringEx.isNullOrEmpty(validationError);
+        }
+
+        private _isHidden(isVisible: boolean): boolean {
+            return !isVisible;
+        }
+
+        private _onFocus() {
+            const target = <HTMLElement>this._renderedAttributeElement || this._getFocusableElement();
+            if (!target)
+                return;
+
+            target.focus();
+        }
+
+        private _loadingChanged(loading: boolean) {
+            if (loading)
+                this.fire("attribute-loading", { attribute: this.attribute }, { bubbles: true });
+            else {
+                Polymer.dom(this).flush();
+                this.fire("attribute-loaded", { attribute: this.attribute }, { bubbles: true });
+            }
+        }
+
+        _viConfigure(actions: IConfigurableAction[]) {
+            if (this.attribute.parent.isSystem)
+                return;
+
+            actions.push({
+                label: `Attribute: ${this.attribute.name}`,
+                icon: "viConfigure",
+                action: () => {
+                    this.app.changePath(`Management/PersistentObject.1456569d-e02b-44b3-9d1a-a1e417061c77/${this.attribute.id}`);
                 }
             });
         }
-
-        private _computeRequired(required: boolean, value: any): boolean {
-            return required && (value === "" || value == null);
-        }
     }
-
-    WebComponent.register(PersistentObjectAttributePresenter, WebComponents, "vi", {
-        properties: {
-            attribute: Object,
-            noLabel: {
-                type: Boolean,
-                reflectToAttribute: true,
-                value: false
-            },
-            editing: {
-                type: Boolean,
-                reflectToAttribute: true,
-                computed: "attribute.parent.isEditing"
-            },
-            required: {
-                type: Boolean,
-                reflectToAttribute: true,
-                computed: "_computeRequired(attribute.isRequired, attribute.value)"
-            },
-            readOnly: {
-                type: Boolean,
-                reflectToAttribute: true,
-                computed: "attribute.isReadOnly"
-            },
-            loading: {
-                type: Boolean,
-                reflectToAttribute: true,
-                readOnly: true,
-                value: true
-            }
-        },
-        observers: [
-            "_attributeChanged(attribute, isAttached)"
-        ],
-        forwardObservers: [
-            "attribute.parent.isEditing",
-            "attribute.isRequired",
-            "attribute.isReadOnly",
-            "attribute.value"
-        ]
-    });
 }

@@ -26,9 +26,9 @@ declare module linqjs {
         make<T>(element: T): Enumerable<T>;
         matches<T>(input: string, pattern: RegExp): Enumerable<T>;
         matches<T>(input: string, pattern: string, flags?: string): Enumerable<T>;
-        range<T>(start: number, count: number, step?: number): Enumerable<T>;
-        rangeDown<T>(start: number, count: number, step?: number): Enumerable<T>;
-        rangeTo<T>(start: number, to: number, step?: number): Enumerable<T>;
+        range(start: number, count: number, step?: number): Enumerable<number>;
+        rangeDown(start: number, count: number, step?: number): Enumerable<number>;
+        rangeTo(start: number, to: number, step?: number): Enumerable<number>;
         repeat<T>(element: T, count?: number): Enumerable<T>;
         repeatWithFinalize<T>(initializer: () => T, finalizer: (element) => void): Enumerable<T>;
         generate<T>(func: () => T, count?: number): Enumerable<T>;
@@ -77,7 +77,7 @@ declare module linqjs {
         alternate(alternateSequence: Enumerable<T>): Enumerable<T>;
         contains(value: T, compareSelector: (element: T) => T): Enumerable<T>;
         defaultIfEmpty(defaultValue?: T): Enumerable<T>;
-        distinct(compareSelector?: (element: T) => T): Enumerable<T>;
+        distinct<TKey>(compareSelector?: (element: T) => TKey): Enumerable<T>;
         distinctUntilChanged(compareSelector: (element: T) => T): Enumerable<T>;
         except(second: T[], compareSelector?: (element: T) => T): Enumerable<T>;
         except(second: { length: number;[x: number]: T; }, compareSelector?: (element: T) => T): Enumerable<T>;
@@ -158,8 +158,8 @@ declare module linqjs {
 
     interface OrderedEnumerable<T> extends Enumerable<T> {
         createOrderedEnumerable(keySelector: (element: T) => T, descending: Boolean): OrderedEnumerable<T>;
-        thenBy(keySelector: (element: T) => T): OrderedEnumerable<T>;
-        thenByDescending(keySelector: (element: T) => T): OrderedEnumerable<T>;
+        thenBy<TKey>(keySelector: (element: T) => TKey): OrderedEnumerable<T>;
+        thenByDescending<TKey>(keySelector: (element: T) => TKey): OrderedEnumerable<T>;
     }
 
     interface DisposableEnumerable<T> extends Enumerable<T> {

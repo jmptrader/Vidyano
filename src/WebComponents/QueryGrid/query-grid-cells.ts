@@ -1,46 +1,110 @@
-﻿module Vidyano.WebComponents {
-    export class QueryGridCellBoolean extends QueryGridCell {
-        private _resource: Vidyano.WebComponents.Resource;
+﻿namespace Vidyano.WebComponents {
+    "use strict";
 
-        protected _render(dom: HTMLElement) {
-            if (!this._resource) {
-                this._resource = new Vidyano.WebComponents.Resource();
-                this._resource.source = "Icon_Selected";
-                dom.appendChild(this._resource);
-            }
+    @Resource.register
+    export class QueryGridCellTemplate extends Resource {
+        static Load(source: string): PolymerTemplate {
+            const cellTemplate = <QueryGridCellTemplate>Resource.LoadResource(source, "VI-QUERY-GRID-CELL-TEMPLATE");
+            if (!cellTemplate)
+                return null;
 
-            var value = this.item ? this.item.getValue(this.gridColumn.column.name) : null;
-            if (value == true)
-                this._resource.className = "checked";
-            else if (value == false)
-                this._resource.className = "unchecked";
-            else
-                this._resource.className = "";
+            return <PolymerTemplate><Node>cellTemplate.querySelector("template");
+        }
+
+        static Exists(name: string): boolean {
+            return Resource.Exists(name, "VI-QUERY-GRID-CELL-TEMPLATE");
         }
     }
 
-    export var QueryGridCellNullableBoolean = QueryGridCellBoolean;
-    export var QueryGridCellYesNo = QueryGridCellBoolean;
-
-    export class QueryGridCellImage extends QueryGridCell {
-        private _img: HTMLElement;
-
-        protected _render(dom: HTMLElement) {
-            if (!this._img) {
-                this._img = document.createElement("div");
-                this._img.className = "image";
-                dom.appendChild(this._img);
+    @WebComponent.register({
+        properties: {
+            value: {
+                type: Object,
+                observer: "_valueChanged"
             }
+        }
+    })
+    export class QueryGridCellImage extends WebComponent {
+        private _isHidden: boolean;
+        private _image: HTMLDivElement;
 
-            var value = <string>(this.item ? this.item.getValue(this.gridColumn.column.name) : null);
-            if (StringEx.isNullOrEmpty(value)) {
-                if (!StringEx.isNullOrEmpty(dom.style.backgroundImage))
-                    this._img.style.backgroundImage = "";
+        private _valueChanged(value: QueryResultItemValue) {
+            if (!value || !value.value) {
+                if (this._image && !this._image.hasAttribute("hidden")) {
+                    this._image.style.backgroundImage = "";
+                    this._image.setAttribute("hidden", "");
+                    this._isHidden = true;
+                }
 
                 return;
             }
 
-            this._img.style.backgroundImage = "url(" + value.asDataUri() + ")";
+            if (!this._image) {
+                Polymer.dom(this).appendChild(this._image = document.createElement("div"));
+                this._image.classList.add("image");
+            }
+
+            if (this._isHidden) {
+                this._image.removeAttribute("hidden");
+                this._isHidden = false;
+            }
+
+            this._image.style.backgroundImage = "url(" + value.value.asDataUri() + ")";
+        }
+    }
+
+    @WebComponent.register({
+        properties: {
+            value: {
+                type: Object,
+                observer: "_valueChanged"
+            }
+        }
+    })
+    export class QueryGridCellBoolean extends WebComponent {
+        private _isHidden: boolean;
+        private _icon: HTMLElement;
+        private _textNode: Text;
+
+        private _valueChanged(value: QueryResultItemValue, oldValue: QueryResultItemValue) {
+            if (!!value && !!oldValue && value.getValue() === oldValue.getValue())
+                return;
+
+            if (!value) {
+                if (this._icon) {
+                    this._icon.setAttribute("hidden", "");
+                    this._isHidden = true;
+                }
+
+                if (this._textNode && this._textNode.nodeValue)
+                    this._textNode.nodeValue = "";
+            } else if (value == null) {
+                if (this._icon) {
+                    this._icon.setAttribute("hidden", "");
+                    this._isHidden = true;
+                }
+
+                if (!this._textNode)
+                    this._textNode = <Text>Polymer.dom(this.root).appendChild(document.createTextNode("—"));
+                else
+                    this._textNode.nodeValue = "—";
+            } else {
+                if (this._isHidden) {
+                    this._icon.removeAttribute("hidden");
+                    this._isHidden = false;
+                }
+
+                if (this._textNode && this._textNode.nodeValue)
+                    this._textNode.nodeValue = "";
+
+                if (!this._icon)
+                    this._icon = <HTMLElement>Polymer.dom(this.root).appendChild(new Vidyano.WebComponents.Icon("Selected"));
+
+                if (!value.getValue())
+                    this._icon.removeAttribute("is-selected");
+                else
+                    this._icon.setAttribute("is-selected", "");
+            }
         }
     }
 }

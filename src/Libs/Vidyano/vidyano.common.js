@@ -150,14 +150,18 @@ String.prototype.trimEnd = function String$trimEnd(c) {
 };
 
 String.prototype.asDataUri = function String$asDataUri() {
-    if (this.startsWith("iVBOR"))
+    if (/^iVBOR/.test(this))
         return "data:image/png;base64," + this;
-    if (this.startsWith("/9j/"))
+    if (/^\/9j\//.test(this))
         return "data:image/jpeg;base64," + this;
-    if (this.startsWith("R0lGOD"))
+    if (/^R0lGOD/.test(this))
         return "data:image/gif;base64," + this;
+    if (/^Qk/.test(this))
+        return "data:image/bmp;base64," + this;
+    if (/^PD94/.test(this))
+        return "data:image/svg+xml;base64," + this;
 
-    return "data:application/octet+stream;base64," + this;
+    return "";
 };
 
 ///////////////////////////////////////////////////////////////
@@ -209,6 +213,10 @@ BigNumber._commaFormat = Number._commaFormat = function Number$_commaFormat(numb
     var groupIndex = 0;
     var groupSize = groups[groupIndex];
     if (number.length < groupSize) {
+		if (negative) {
+			number = '-' + number;
+		}
+
         return decimalPart ? number + decimalPart : number;
     }
 
@@ -629,6 +637,8 @@ Object.defineProperty(Array.prototype, "remove", {
 
         return success;
     },
+    configurable: true,
+    writable: true,
     enumerable: false
 })
 
@@ -637,12 +647,14 @@ Object.defineProperty(Array.prototype, "removeAll", {
          /// <summary>Removes all instances that match function f from this instance.</summary>
 
          if (this.length > 0) {
-             for (var index = this.length - 1; index--;) {
+             for (var index = this.length; index--;) {
                  if (f.call(thisObject, this[index], index, this))
                      this.splice(index, 1);
              }
          }
     },
+    configurable: true,
+    writable: true,
     enumerable: false
 })
 
@@ -747,3 +759,66 @@ var Unique = (function () {
         }
     }
 })(window);
+
+///////////////////////////////////////////////////////////////
+/// Helper Methods ////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
+
+var Vidyano;
+(function (Vidyano) {
+    "use strict";
+    function noop() {
+    }
+    Vidyano.noop = noop;
+    function extend(target) {
+        var sources = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            sources[_i - 1] = arguments[_i];
+        }
+        sources.forEach(function (source) {
+            for (var key in source) {
+                if (source.hasOwnProperty(key))
+                    target[key] = source[key];
+            }
+        });
+        return target;
+    }
+    Vidyano.extend = extend;
+    function splitWithTail(value, separator, limit) {
+        var pattern, startIndex, m, parts = [];
+        if (!limit)
+            return value.split(separator);
+        if (separator instanceof RegExp)
+            pattern = new RegExp(separator.source, "g" + (separator.ignoreCase ? "i" : "") + (separator.multiline ? "m" : ""));
+        else
+            pattern = new RegExp(separator.replace(/([.*+?^${}()|\[\]\/\\])/g, "\\$1"), "g");
+        do {
+            startIndex = pattern.lastIndex;
+            if (m = pattern.exec(value)) {
+                parts.push(value.substr(startIndex, m.index - startIndex));
+            }
+        } while (m && parts.length < limit - 1);
+        parts.push(value.substr(pattern.lastIndex));
+        return parts;
+    }
+    Vidyano.splitWithTail = splitWithTail;
+    function _debounce(func, wait, immediate) {
+        var result;
+        var timeout = null;
+        return function () {
+            var context = this, args = arguments;
+            var later = function () {
+                timeout = null;
+                if (!immediate)
+                    result = func.apply(context, args);
+            };
+            var callNow = immediate && !timeout;
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+            if (callNow)
+                result = func.apply(context, args);
+            return result;
+        };
+    }
+    Vidyano._debounce = _debounce;
+})(Vidyano || (Vidyano = {}));

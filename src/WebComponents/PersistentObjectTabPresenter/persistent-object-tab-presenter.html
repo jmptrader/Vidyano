@@ -1,11 +1,9 @@
 <dom-module id="vi-persistent-object-tab-presenter">
     <template>
-        <template is="dom-if" if="{{loading}}">
-            <vi-spinner></vi-spinner>
-        </template>
+        <link rel="stylesheet" href="persistent-object-tab-presenter.css" />
         <content></content>
+        <vi-spinner hidden="[[!loading]]"></vi-spinner>
     </template>
 </dom-module>
 
-<link rel="stylesheet" href="persistent-object-tab-presenter.css" />
 <script src="persistent-object-tab-presenter.js"></script>

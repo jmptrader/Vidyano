@@ -1,26 +1,43 @@
-﻿module Vidyano.WebComponents.Attributes {
-    //x TODO
-    //x http://localhost/VidyanoWeb2/#!/Management/PersistentObject.27d6baf2-ecb3-4eec-82f6-eb415b8987f9/ActionNotImplemented
+﻿namespace Vidyano.WebComponents.Attributes {
+    "use strict";
 
-    export interface TranslatedString {
+    export interface ITranslatedString {
         key: string;
         label: string;
         value: string;
     }
 
+    @PersistentObjectAttribute.register({
+        properties: {
+            strings: {
+                type: Array,
+                readOnly: true
+            },
+            multiline: {
+                type: Boolean,
+                reflectToAttribute: true,
+                computed: "_computeMultiline(attribute)"
+            },
+            canShowDialog: {
+                type: Boolean,
+                computed: "_computeCanShowDialog(strings, multiline)"
+            }
+        }
+    })
     export class PersistentObjectAttributeTranslatedString extends PersistentObjectAttribute {
         private _defaultLanguage: string;
-        strings: TranslatedString[];
+        readonly strings: ITranslatedString[]; private _setStrings: (strings: ITranslatedString[]) => void;
+        multiline: boolean;
 
-        protected _optionsChanged() {
-            super._optionsChanged();
+        protected _optionsChanged(options: string[] | Common.IKeyValuePair[]) {
+            super._optionsChanged(options);
 
-            var strings: TranslatedString[] = [];
+            const strings: ITranslatedString[] = [];
             this._defaultLanguage = <string>this.attribute.options[1];
-            var data = JSON.parse(<string>this.attribute.options[0]);
-            var labels = JSON.parse(<string>this.attribute.options[2]);
+            const data = JSON.parse(<string>this.attribute.options[0]);
+            const labels = JSON.parse(<string>this.attribute.options[2]);
 
-            for (var key in labels) {
+            for (const key in labels) {
                 strings.push({
                     key: key,
                     value: data[key] || "",
@@ -28,99 +45,84 @@
                 });
             }
 
-            this.strings = strings;
+            this._setStrings(strings);
         }
 
-        protected _valueChanged(newValue: string) {
+        protected _valueChanged(newValue: string, oldValue: string) {
             if (newValue === this.attribute.value)
                 return;
 
-            super._valueChanged(newValue);
+            super._valueChanged(newValue, oldValue);
 
-            Enumerable.from(this.strings).first(s => s.key == this._defaultLanguage).value = newValue;
+            Enumerable.from(this.strings).first(s => s.key === this._defaultLanguage).value = newValue;
 
-            var newOption = {};
+            const newOption = {};
             this.strings.forEach(val => {
                 newOption[val.key] = val.value;
             });
 
-            this.set("attribute.options[0]", JSON.stringify(newOption));
+            this.set("attribute.options.0", JSON.stringify(newOption));
         }
 
         private _editInputBlur() {
             if (this.attribute && this.attribute.isValueChanged && this.attribute.triggersRefresh)
-                this.attribute.setValue(this.value = this.attribute.value, true);
+                this.attribute.setValue(this.value = this.attribute.value, true).catch(Vidyano.noop);
         }
 
-        private _computeMultiLine(attribute: Vidyano.PersistentObjectAttribute): boolean {
-            return attribute && attribute.getTypeHint("MultiLine") == "True";
+        private _computeMultiline(attribute: Vidyano.PersistentObjectAttribute): boolean {
+            return attribute && attribute.getTypeHint("MultiLine") === "True";
         }
 
-        private _showLanguagesDialog() {
-            var dialog = <PersistentObjectAttributeTranslatedStringDialog>this.$$("#dialog");
-            dialog.strings = this.strings.slice();
+        private _computeCanShowDialog(strings: ITranslatedString[], multiline: boolean): boolean {
+            return strings.length > 1 || multiline;
+        }
 
-            return dialog.show().then(result => {
-                if (!result)
-                    return;
+        private async _showLanguagesDialog() {
+            if (this.readOnly)
+                return;
 
-                var newData = {};
-                result.forEach(s => {
-                    newData[s.key] = this.strings[s.key] = s.value;
-                    if (s.key === this._defaultLanguage)
-                        this.attribute.value = s.value;
-                });
+            const result = await this.app.showDialog(new Vidyano.WebComponents.Attributes.PersistentObjectAttributeTranslatedStringDialog(this.attribute.label, this.strings.slice(), this.multiline, this.readOnly));
+            if (!result)
+                return;
 
-                this.attribute.options[0] = JSON.stringify(newData);
-
-                this.attribute.isValueChanged = true;
-                this.attribute.parent.triggerDirty();
-
-                this.attribute.setValue(this.value = this.attribute.value, true);
+            const newData = {};
+            result.forEach(s => {
+                newData[s.key] = this.strings[s.key] = s.value;
+                if (s.key === this._defaultLanguage)
+                    this.attribute.value = s.value;
             });
+
+            this.attribute.options[0] = JSON.stringify(newData);
+
+            this.attribute.isValueChanged = true;
+            this.attribute.parent.triggerDirty();
+
+            await this.attribute.setValue(this.value = this.attribute.value, true);
         }
     }
 
-    export class PersistentObjectAttributeTranslatedStringDialog extends WebComponent {
-        private _dialog: DialogInstance;
-        label: string;
-        strings: TranslatedString[];
-
-        show(): Promise<any> {
-            var dialog = <Vidyano.WebComponents.Dialog><any>this.$["dialog"];
-            this._dialog = dialog.show();
-
-            return this._dialog.result;
-        }
-
-        private _ok() {
-            this._dialog.resolve(this.strings);
-        }
-
-        private _cancel() {
-            this._dialog.reject(null);
-        }
-    }
-
-    PersistentObjectAttribute.registerAttribute(PersistentObjectAttributeTranslatedString, {
+    @Dialog.register({
         properties: {
+            label: String,
+            strings: Array,
+            readonly: Boolean,
             multiline: {
                 type: Boolean,
                 reflectToAttribute: true,
-                computed: "_computeMultiLine(attribute)"
             }
         }
-    });
+    })
+    export class PersistentObjectAttributeTranslatedStringDialog extends Dialog {
+        constructor(public label: string, public strings: ITranslatedString[], public multiline: boolean, public readonly: boolean) {
+            super();
+        }
 
-    Vidyano.WebComponents.WebComponent.register(Vidyano.WebComponents.Attributes.PersistentObjectAttributeTranslatedStringDialog, Vidyano.WebComponents, "vi",
-        {
-            properties: {
-                label: String,
-                strings: Array,
-                multiline: {
-                    type: Boolean,
-                    reflectToAttribute: true,
-                }
-            }
-        });
+        private _ok() {
+            this.close(this.strings);
+        }
+
+        private _onCaptureTab() {
+            // Skip default tab navigation behavior
+        }
+    }
 }

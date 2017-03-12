@@ -1,8 +1,7 @@
-﻿module Vidyano.WebComponents {
-    export class Button extends WebComponents.WebComponent {
-    }
+﻿namespace Vidyano.WebComponents {
+    "use strict";
 
-    WebComponent.register(Button, WebComponents, "vi", {
+    @WebComponent.register({
         extends: "button",
         properties: {
             disabled: {
@@ -12,7 +11,38 @@
             inverse: {
                 type: String,
                 reflectToAttribute: true
+            },
+            customLayout: {
+                type: Boolean,
+                readOnly: true,
+                reflectToAttribute: true
+            },
+            elevation: {
+                type: Number,
+                reflectToAttribute: true
+            },
+            icon: String,
+            label: String
+        },
+        listeners: {
+            "tap": "_tap"
+        }
+    })
+    export class Button extends WebComponents.WebComponent {
+        readonly customLayout: boolean; private _setCustomLayout: (custom: boolean) => void;
+        disabled: boolean;
+
+        attached() {
+            super.attached();
+
+            this._setCustomLayout(Polymer.dom(this).children.length > 0);
+        }
+
+        private _tap(e: TapEvent) {
+            if (this.disabled) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
             }
         }
-    });
+    }
 }

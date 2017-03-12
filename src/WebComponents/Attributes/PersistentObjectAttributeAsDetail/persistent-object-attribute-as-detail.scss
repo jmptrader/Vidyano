@@ -1,0 +1,201 @@
+@import "../../vars.scss";
+
+@mixin addStyle() {
+    &.foot {
+        height: var(--theme-h2);
+        background-color: #F9F9F9;
+        border: 1px solid var(--theme-light-border);
+    }
+
+    ::content > button {
+        height: var(--theme-h2);
+        line-height: var(--theme-h2);
+    }
+}
+
+:host {
+    @include layout-horizontal();
+    @include relative();
+    overflow: hidden;
+
+    &[initializing] {
+        #table {
+            opacity: 0;
+        }
+    }
+
+    #table {
+        @include layout-vertical();
+        @include flex();
+        line-height: var(--theme-h2);
+        overflow: hidden;
+
+        #head {
+            height: var(--theme-h2);
+            border-style: solid;
+            border-color: var(--theme-light-border);
+            border-width: 0 0 1px 0;
+
+            .column {
+                box-sizing: border-box;
+                border-style: solid;
+                border-color: var(--theme-light-border);
+                border-width: 0;
+
+                label {
+                    display: block;
+                    vertical-align: top;
+                    padding: 0 4px;
+                    overflow: hidden;
+                    -ms-text-overflow: ellipsis;
+                    -o-text-overflow: ellipsis;
+                    text-overflow: ellipsis;
+                    text-align: left;
+                    font-weight: bold;
+                    font-size: 11px;
+                    letter-spacing: 0.5px;
+                }
+            }
+        }
+
+        #body {
+            position: relative;
+            @include flex();
+
+            #data {
+                display: block;
+                overflow: hidden;
+            }
+        }
+
+        button.action {
+            height: var(--theme-h2);
+            line-height: var(--theme-h2);
+        }
+    }
+
+    &[editing] {
+        #table {
+            @include noSelection();
+
+            #head {
+                background-color: #F9F9F9;
+
+                .column {
+                    border-width: 1px 1px 0 0;
+                    padding: 0 1px 1px 0;
+                    height: var(--theme-h2);
+                    line-height: var(--theme-h2);
+                    box-sizing: border-box;
+
+                    &:first-of-type {
+                        border-left-width: 1px;
+                    }
+
+                    &:last-of-type {
+                        @include flex();
+                        width: auto;
+                    }
+                }
+            }
+
+            #body {
+                margin-top: 1px !important;
+
+                .row {
+                    height: calc(var(--theme-h2) + 2px);
+                    line-height: calc(var(--theme-h2) + 2px);
+                    overflow: hidden;
+
+                    div.delete-button {
+                        @include layout-horizontal();
+                        padding: 0 0 1px 1px;
+                        height: var(--theme-h2);
+                        line-height: var(--theme-h2);
+
+                        button {
+                            @include flex();
+                            @include layout-horizontal();
+                            box-sizing: border-box;
+                            border: 1px solid var(--theme-light-border);
+                            padding: 0 var(--theme-h4);
+                            fill: var(--theme-color-light);
+
+                            &:not(:hover):not(:active) {
+                                background-color: transparent;
+                            }
+
+                            vi-icon {
+                                line-height: var(--theme-h2);
+                                height: var(--theme-h2);
+
+                                svg {
+                                    width: 12px;
+                                    height: 12px;
+                                }
+                            }
+
+                            &[disabled] {
+                                background-color: #eee !important;
+                            }
+                        }
+                    }
+
+                    &:last-of-type {
+                        height: var(--theme-h2);
+
+                        .column, div.delete-button {
+                            padding-bottom: 0;
+                        }
+                    }
+                }
+
+                &[vertical] {
+                    .row div.delete-button {
+                        margin-right: var(--theme-h4);
+                    }
+                }
+            }
+
+            .row.add {
+                @include addStyle();
+            }
+        }
+
+        &:not([can-delete]) {
+            #table #head .column:last-of-type label {
+                border-right: 0;
+            }
+        }
+    }
+
+    &:not([editing]) {
+        #table {
+            border: none;
+
+            #body {
+                .row {
+                    &:nth-child(odd) {
+                        background-color: #FCFCFC;
+                    }
+
+                    &:nth-child(even) {
+                        background-color: #F7F7F7;
+                    }
+
+                    .column {
+                        padding: 1px 4px;
+                        overflow: hidden;
+                        -ms-text-overflow: ellipsis;
+                        -o-text-overflow: ellipsis;
+                        text-overflow: ellipsis;
+                    }
+                }
+            }
+        }
+
+        #foot {
+            display: none;
+        }
+    }
+}

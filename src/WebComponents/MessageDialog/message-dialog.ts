@@ -1,5 +1,7 @@
-﻿module Vidyano.WebComponents {
-    export interface MessageDialogOptions extends DialogOptions {
+﻿namespace Vidyano.WebComponents {
+    "use strict";
+
+    export interface IMessageDialogOptions {
         noClose?: boolean;
         title?: string;
         titleIcon?: string;
@@ -7,33 +9,38 @@
         actionTypes?: string[];
         message: string;
         extraClasses?: string[];
-
+        rich?: boolean;
     }
 
-    export class MessageDialog extends WebComponent {
-        private _dialog: WebComponents.DialogInstance;
-        options: MessageDialogOptions;
+    @Dialog.register({
+        properties: {
+            options: {
+                type: Object,
+                readOnly: true
+            }
+        }
+    })
+    export class MessageDialog extends Dialog {
+        readonly options: IMessageDialogOptions; private _setOptions: (options: IMessageDialogOptions) => void;
 
-        private _setOptions: (options: MessageDialogOptions) => void;
+        constructor(options: IMessageDialogOptions) {
+            super();
 
-        show(options: MessageDialogOptions): Promise<any> {
             this._setOptions(options);
-
-            var dialog = <WebComponents.Dialog><any>this.$["dialog"];
-            this._dialog = dialog.show(options);
-
-            return this._dialog.result;
         }
 
-        private _close() {
-            this._dialog.reject();
+        async open(): Promise<any> {
+            if (this.options.rich)
+                await this.importHref(this.resolveUrl("../../Libs/marked-element/marked-element.html"));
+
+            return super.open();
         }
 
-        private _hasHeaderIcon(options: MessageDialogOptions): boolean {
-            return this.options && typeof this.options.titleIcon == "string";
+        private _hasHeaderIcon(options: IMessageDialogOptions): boolean {
+            return options && typeof options.titleIcon === "string";
         }
 
-        private _getActionType(options: MessageDialogOptions, index: number): string {
+        private _getActionType(options: IMessageDialogOptions, index: number): string {
             if (!options || !options.actionTypes)
                 return undefined;
 
@@ -41,7 +48,7 @@
         }
 
         private _onSelectAction(e: TapEvent) {
-            this._dialog.resolve(e.model.index);
+            this.close(e.model.index);
 
             e.stopPropagation();
         }
@@ -50,23 +57,4 @@
             return index === 0;
         }
     }
-
-    Vidyano.WebComponents.WebComponent.register(Vidyano.WebComponents.MessageDialog, Vidyano.WebComponents, "vi",
-        {
-            properties: {
-                options: {
-                    type: Object,
-                    readOnly: true
-                }
-            },
-            hostAttributes: {
-                "dialog": ""
-            },
-            keybindings: {
-                "esc": {
-                    listener: "_close",
-                    priority: Number.MAX_VALUE
-                }
-            }
-        });
 }

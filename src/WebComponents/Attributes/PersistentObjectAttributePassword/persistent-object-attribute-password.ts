@@ -1,6 +1,11 @@
-module Vidyano.WebComponents.Attributes {
-    export class PersistentObjectAttributePassword extends WebComponents.Attributes.PersistentObjectAttribute {
-    }
+namespace Vidyano.WebComponents.Attributes {
+    "use strict";
 
-	PersistentObjectAttribute.registerAttribute(PersistentObjectAttributePassword);
+    @PersistentObjectAttribute.register
+    export class PersistentObjectAttributePassword extends WebComponents.Attributes.PersistentObjectAttribute {
+        private _editInputBlur() {
+            if (this.attribute && this.attribute.isValueChanged && this.attribute.triggersRefresh)
+                this.attribute.setValue(this.value = this.attribute.value, true).catch(Vidyano.noop);
+        }
+    }
 }

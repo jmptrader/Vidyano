@@ -1,0 +1,75 @@
+@import "../../vars.scss";
+
+:host {
+    @include layout-horizontal();
+
+    white-space: nowrap;
+    height: var(--theme-h2);
+    line-height: var(--theme-h2);
+
+    .column {
+        padding: 0 1px 1px 0;
+        height: var(--theme-h2);
+        line-height: var(--theme-h2);
+        box-sizing: border-box;
+
+        &:last-of-type {
+            padding-right: 0;
+        }
+
+        > vi-persistent-object-attribute-presenter {
+            height: var(--theme-h2);
+            line-height: var(--theme-h2);
+
+            &[soft-edit-only] {
+                display: none !important;
+            }
+        }
+
+        > [pre-edit] {
+            height: var(--theme-h2);
+            line-height: calc(var(--theme-h2) - 2px);
+
+            span {
+                display: block;
+                position: relative;
+                border: 1px solid var(--theme-light-border);
+                box-sizing: border-box;
+            }
+
+            vi-persistent-object-attribute-validation-error:not([hidden]) + span {
+                border-color: var(--theme-color-error) !important;
+
+                &::before {
+                    @include fit();
+                    content: " ";
+                    opacity: 0.05;
+                    background-color: var(--theme-color-error);
+                    pointer-events: none;
+                }
+            }
+        }
+
+        span {
+            padding: 0 var(--theme-h5);
+            overflow: hidden;
+            -ms-text-overflow: ellipsis;
+            -o-text-overflow: ellipsis;
+            text-overflow: ellipsis;
+        }
+    }
+
+    &:not([full-edit]):not([read-only]) {
+        cursor: pointer;
+    }
+
+    &:not([full-edit])[frozen] [pre-edit] {
+        background-color: #eee;
+    }
+}
+
+:host-context(vi-persistent-object-attribute-as-detail:not([editing])) {
+    .column:not(:last-of-type) {
+        border-right: 1px solid var(--theme-light-border);
+    }
+}

@@ -1,0 +1,18 @@
+@import "../../vars.scss";
+
+:host {
+    @include layout-horizontal();
+    overflow: hidden;
+
+    textarea {
+        resize: none;
+    }
+
+    pre, textarea {
+		color: var(--vi-persistent-object-attribute-foreground, --theme-foreground);
+	}
+
+    pre {
+        white-space: pre-line;
+    }
+}

@@ -1,28 +1,23 @@
-﻿module Vidyano.WebComponents {
-    export class PersistentObjectTabConfig extends WebComponent {
-        name: string;
-        type: string;
-        objectId: string;
-        template: any;
+﻿namespace Vidyano.WebComponents {
+    "use strict";
 
-        private _setTemplate: (template: HTMLElement) => void;
-
-        attached() {
-            super.attached();
-
-            this._setTemplate(<HTMLElement>Polymer.dom(this).querySelector("template"));
-        }
-    }
-
-    WebComponent.register(PersistentObjectTabConfig, WebComponents, "vi", {
+    @TemplateConfig.register({
         properties: {
+            id: String,
             name: String,
             type: String,
             objectId: String,
-            template: {
-                type: Object,
-                readOnly: true
+            hideActionBar: {
+                type: Boolean,
+                reflectToAttribute: true
             }
         }
-    });
+    })
+    export class PersistentObjectTabConfig extends TemplateConfig<Vidyano.PersistentObjectTab> {
+        id: string;
+        name: string;
+        type: string;
+        objectId: string;
+        hideActionBar: boolean;
+    }
 }

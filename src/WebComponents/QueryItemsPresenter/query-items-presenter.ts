@@ -1,51 +1,118 @@
-module Vidyano.WebComponents {
-    export class QueryItemsPresenter extends WebComponent {
-        private static _queryGridComponentLoader: Promise<any>;
-        private _content: HTMLElement | WebComponent;
+namespace Vidyano.WebComponents {
+    "use strict";
+
+    let _queryGridComponentLoader: Promise<any>;
+    let _chartComponentLoader: Promise<any>;
+
+    @WebComponent.register({
+        properties: {
+            query: Object,
+            loading: {
+                type: Boolean,
+                reflectToAttribute: true,
+                readOnly: true,
+                value: true
+            },
+            templated: {
+                type: Boolean,
+                reflectToAttribute: true,
+                readOnly: true
+            },
+            fileDrop: {
+                type: Boolean,
+                reflectToAttribute: true,
+                readOnly: true
+            }
+        },
+        hostAttributes: {
+            "tabindex": "0"
+        },
+        keybindings: {
+            "f5 ctrl+r": "_refresh",
+            "ctrl+n": "_new",
+            "delete": "_delete",
+            "f2": "_bulkEdit"
+        },
+        observers: [
+            "_renderQuery(query, query.currentChart, isAttached)"
+        ],
+        forwardObservers: [
+            "query.currentChart"
+        ],
+        listeners: {
+            "file-dropped": "_onFileDropped"
+        }
+    })
+    export class QueryItemsPresenter extends WebComponent implements IConfigurable {
+        private _renderedQuery: Vidyano.Query;
+        readonly loading: boolean; private _setLoading: (loading: boolean) => void;
+        readonly templated: boolean; private _setTemplated: (templated: boolean) => void;
+        readonly fileDrop: boolean; private _setFileDrop: (fileDrop: boolean) => void;
         query: Vidyano.Query;
 
-        private _queryChanged(query: Vidyano.Query, oldQuery: Vidyano.Query) {
-            if (this._content) {
-                Polymer.dom(this).removeChild(this._content);
-                this._content = null;
+        private async _renderQuery(query: Vidyano.Query, currentChart: Vidyano.QueryChart, isAttached: boolean) {
+            if (!isAttached)
+                return;
+
+            this.empty();
+            this._renderedQuery = null;
+
+            if (!query) {
+                this._setFileDrop(false);
+                this._setTemplated(false);
+
+                return;
             }
 
-            if (query) {
-                var child: HTMLElement;
+            this._setLoading(true);
 
-                //! TODO Custom templates for queries
-                //var queryTemplateName = "QUERY." + this.query.name;
-                //if (Vidyano.WebComponents.Resource.Exists(queryTemplateName)) {
-                //    var resource = new Vidyano.WebComponents.Resource();
-                //    resource.source = queryTemplateName;
-                //    this.appendChild(resource);
-                //}
-                //else {
-                if (!Vidyano.WebComponents.QueryItemsPresenter._queryGridComponentLoader) {
-                    Vidyano.WebComponents.QueryItemsPresenter._queryGridComponentLoader = new Promise(resolve => {
-                        this.importHref(this.resolveUrl("../QueryGrid/query-grid.html"), e => {
-                            resolve(true);
-                        }, err => {
-                                console.error(err);
-                                resolve(false);
-                            });
-                    });
+            const config = this.app.configuration.getQueryConfig(query);
+
+            this._setFileDrop(!!config && !!config.fileDropAttribute && !!query.actions["New"]);
+            this._setTemplated(!!config && config.hasTemplate);
+
+            if (this.templated) {
+                if (this._renderedQuery !== query) {
+                    Polymer.dom(this).appendChild(config.stamp(query, config.as || "query"));
+                    this._renderedQuery = query;
                 }
-
-                this._renderGrid(query);
-                //}
             }
+            else {
+                if (!currentChart) {
+                    await this.app.importComponent("QueryGrid");
+                    if (query !== this.query || this._renderedQuery === query || !!query.currentChart)
+                        return;
+
+                    const grid = new Vidyano.WebComponents.QueryGrid();
+                    this._renderedQuery = grid.query = this.query;
+                    Polymer.dom(this).appendChild(grid);
+                }
+                else {
+                    const chartConfig = this.app.configuration.getQueryChartConfig(currentChart.type);
+                    if (!chartConfig) {
+                        console.error(`No chart configuration found for type '${currentChart.type}'`);
+                        return;
+                    }
+
+                    await this.importHref(this.resolveUrl("../Chart/chart-dependencies.html"));
+
+                    if (query !== this.query || this._renderedQuery === query)
+                        return;
+
+                    this._renderedQuery = query;
+
+                    Polymer.dom(this).appendChild(chartConfig.stamp(currentChart, chartConfig.as || "chart"));
+                }
+            }
+
+            this._setLoading(false);
         }
 
-        private _renderGrid(query: Vidyano.Query) {
-            Vidyano.WebComponents.QueryItemsPresenter._queryGridComponentLoader.then(() => {
-                if (query !== this.query)
-                    return;
+        private _onFileDropped(e: CustomEvent, details: IFileDropDetails) {
+            if (!this.fileDrop)
+                return;
 
-                var grid = new Vidyano.WebComponents.QueryGrid();
-                grid.query = this.query;
-                Polymer.dom(this).appendChild(this._content = grid);
-            });
+            (<AppServiceHooks>this.app.service.hooks).onQueryFileDrop(this.query, details.name, details.contents);
         }
 
         private _refresh() {
@@ -57,16 +124,16 @@ module Vidyano.WebComponents {
             if (!this.query)
                 return;
 
-            var action = <Vidyano.Action>this.query.actions["New"];
+            const action = <Vidyano.Action>this.query.actions["New"];
             if (action)
                 action.execute();
         }
 
         private _delete() {
-            if (!this.query)
-                return;
+            if (!this.query || !this.query.selectedItems || this.query.selectedItems.length === 0)
+                return true;
 
-            var action = <Vidyano.Action>this.query.actions["Delete"];
+            const action = <Vidyano.Action>this.query.actions["Delete"];
             if (action)
                 action.execute();
         }
@@ -75,27 +142,29 @@ module Vidyano.WebComponents {
             if (!this.query)
                 return;
 
-            var action = <Vidyano.Action>this.query.actions["BulkEdit"];
+            const action = <Vidyano.Action>this.query.actions["BulkEdit"];
             if (action)
                 action.execute();
         }
-    }
 
-    WebComponent.register(QueryItemsPresenter, WebComponents, "vi", {
-        properties: {
-            query: {
-                type: Object,
-                observer: "_queryChanged"
-            }
-        },
-        hostAttributes: {
-            "tabindex": "0"
-        },
-        keybindings: {
-            "f5 ctrl+r": "_refresh",
-            "ctrl+n": "_new",
-            "del": "_delete",
-            "f2": "_bulkEdit"
+        _viConfigure(actions: IConfigurableAction[]) {
+            if (this.query.isSystem)
+                return;
+
+            actions.push({
+                label: `Query: ${this.query.label}`,
+                icon: "viConfigure",
+                action: () => {
+                    this.app.changePath(`Management/PersistentObject.b9d2604d-2233-4df2-887a-709d93502843/${this.query.id}`);
+                },
+                subActions: [{
+                    label: `Persistent Object: ${this.query.persistentObject.type}`,
+                    icon: "viConfigure",
+                    action: () => {
+                        this.app.changePath(`Management/PersistentObject.316b2486-df38-43e3-bee2-2f7059334992/${this.query.persistentObject.id}`);
+                    }
+                }]
+            });
         }
-    });
+    }
 }

@@ -1,9 +1,11 @@
 ﻿<dom-module id="vi-checkbox">
     <template>
-        <vi-resource source="Icon_Selected"></vi-resource>
-        <span>{{label}}</span>
+        <link rel="stylesheet" href="checkbox.css" />
+        <div class="layout horizontal center">
+            <vi-icon hidden$="[[isNull]]" disabled$="[[disabled]]" source="[[_computeIcon(radio)]]" is-selected$="[[checked]]"></vi-icon>
+            <span empty$="[[_isEmpty(label)]]">[[label]]</span>
+        </div>
     </template>
 </dom-module>
 
-<link rel="stylesheet" href="checkbox.css" />
 <script src="checkbox.js"></script>

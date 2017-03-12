@@ -62,6 +62,8 @@ dlldata.c
 *.pidb
 *.svclog
 *.scc
+.vs
+.vscode
 
 # Chutzpah Test files
 _Chutzpah*
@@ -136,6 +138,7 @@ publish/
 
 # NuGet Packages Directory
 packages/*
+dist/Vidyano.Web2/packages/*
 ## TODO: If the tool you use requires repositories.config
 ## uncomment the next line
 #!packages/repositories.config
@@ -195,7 +198,32 @@ _Pvt_Extensions/
 ModelManifest.xml
 
 # Project files
-.vs/config/applicationhost.config
-project.lock.json
-src/demo-dev.html
-dist/demo-dev.html
+/src/demo-dev.html
+/src/web.config
+/src/WebComponents/**/*.js
+/src/WebComponents/**/*.css
+/src/Libs/Vidyano/vidyano.js
+/src/Libs/Vidyano/vidyano.cultures.js
+/src/Libs/Alertify.js/*.js
+/src/Libs/Alertify.js/*.css
+/src/Libs/bignumber.js/
+/src/Libs/codemirror/
+/src/Libs/d3/
+/src/Libs/es6-promise/
+/src/Libs/iron-*
+/src/Libs/layout/layout.html
+/src/Libs/linqjs/
+/src/Libs/marked*
+/src/Libs/moment/*.js
+/src/Libs/paper-ripple/
+/src/Libs/pathjs/
+/src/Libs/polymer/
+/src/Libs/sortable/
+/src/Libs/tslib/
+/src/Libs/webcomponentsjs/
+/src/Test/*.js
+/dist/Vidyano.Web2/src
+/dist/Vidyano.Web2/vidyano.d.ts
+/dist/packages/
+*.nupkg
+*.map

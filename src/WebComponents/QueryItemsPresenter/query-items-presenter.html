@@ -1,4 +1,19 @@
-<dom-module id="vi-query-items-presenter"></dom-module>
+<link rel="import" href="../Chart/chart.html" />
+<link rel="import" href="../FileDrop/file-drop.html" />
 
-<link rel="stylesheet" href="query-items-presenter.css" />
+<dom-module id="vi-query-items-presenter">
+    <template>
+        <link rel="stylesheet" href="query-items-presenter.css" />
+        <template is="dom-if" if="[[fileDrop]]">
+            <vi-file-drop class="layout horizontal">
+                <content></content>
+            </vi-file-drop>
+        </template>
+        <template is="dom-if" if="[[!fileDrop]]">
+            <content></content>
+        </template>
+        <vi-spinner hidden$="[[!loading]]"></vi-spinner>
+    </template>
+</dom-module>
+
 <script src="query-items-presenter.js"></script>

@@ -1,11 +1,15 @@
-﻿interface PolymerProperties {
-    [name: string]: ObjectConstructor | StringConstructor | BooleanConstructor | DateConstructor | NumberConstructor | ArrayConstructor | {
-        type: ObjectConstructor | StringConstructor | BooleanConstructor | DateConstructor | NumberConstructor | ArrayConstructor;
-        computed?: string;
-        reflectToAttribute?: boolean;
-        readOnly?: boolean;
-        observer?: string;
-    };
+﻿interface PolymerProperty {
+    type: ObjectConstructor | StringConstructor | BooleanConstructor | DateConstructor | NumberConstructor | ArrayConstructor;
+    computed?: string;
+    reflectToAttribute?: boolean;
+    readOnly?: boolean;
+    observer?: string;
+    value?: number | boolean | string | Function;
+    notify?: boolean;
+}
+
+interface PolymerProperties {
+    [name: string]: ObjectConstructor | StringConstructor | BooleanConstructor | DateConstructor | NumberConstructor | ArrayConstructor | PolymerProperty;
 }
 
 interface PolymerDomApiClassList {
@@ -36,11 +40,29 @@ interface PolymerDomApi {
     insertBefore(newChild: Node | Vidyano.WebComponents.WebComponent, refChild?: Node | Vidyano.WebComponents.WebComponent): Node;
     removeAttribute(name?: string): void;
     setAttribute(name?: string, value?: string): void;
-    querySelector(selectors: string): Element | Vidyano.WebComponents.WebComponent;
+    querySelector(selectors: string): Node | HTMLElement | Vidyano.WebComponents.WebComponent;
     querySelectorAll(selectors: string): NodeList;
     appendChild(newChild: Node | Vidyano.WebComponents.WebComponent): Node | Vidyano.WebComponents.WebComponent;
     removeChild(oldChild: Node | Vidyano.WebComponents.WebComponent): Node | Vidyano.WebComponents.WebComponent;
     replaceChild(newChild: Node | Vidyano.WebComponents.WebComponent, oldChild: Node | Vidyano.WebComponents.WebComponent): Node;
+    getEffectiveChildNodes(): Node[];
+    observeNodes(callBack: (info: PolymerDomChangedInfo) => void): PolymerDomChangeObserver;
+    unobserveNodes(observer: PolymerDomChangeObserver);
+}
+
+interface PolymerDomChangedInfo {
+    addedNodes: Node[];
+    removedNodes: Node[];
+    target: Element;
+}
+
+interface PolymerDomChangeObserver {
+}
+
+interface PolymerTrackEvent extends CustomEvent {
+    detail: {
+        sourceEvent?: Event;
+    }
 }
 
 interface PolymerTrackDetail {
@@ -67,9 +89,14 @@ interface PolymerTrackDetail {
     hover(): Element | Vidyano.WebComponents.WebComponent;
 }
 
+interface PolymerTemplate extends Node {
+    stamp: (model: any) => TemplateInstance;
+}
+
 interface TemplateInstance {
     item: any;
     index: number;
+    root: DocumentFragment;
 }
 
 interface TapEvent extends CustomEvent {
@@ -77,15 +104,26 @@ interface TapEvent extends CustomEvent {
         x: number;
         y: number;
         sourceEvent: Event;
+        preventer?: Event;
     };
 
     model?: TemplateInstance | any;
 }
 
+interface PolymerGestures {
+    add: (node: HTMLElement, eventName: string, handler: Function) => void;
+    remove: (node: HTMLElement, eventName: string, handler: Function) => void;
+}
+
 declare var Polymer: {
-    (polymer: any): void;
+    (polymer: any): any;
     dom(element: Node | Vidyano.WebComponents.WebComponent): PolymerDomApi;
     getRegisteredPrototype(tagName: string): any;
+
+    /**
+     * Returns true if the element is a Polymer web component.
+     */
+    isInstance(element: HTMLElement): boolean;
 
     whenReady(callback: () => void): void;
 
@@ -95,6 +133,8 @@ declare var Polymer: {
     nop(): void;
 
     api: any;
+
+    Gestures: PolymerGestures;
 };
 declare var CustomElements: {
     registry: {

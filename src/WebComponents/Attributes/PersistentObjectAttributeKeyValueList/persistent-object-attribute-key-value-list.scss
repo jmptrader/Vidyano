@@ -1,0 +1,21 @@
+@import "../../vars.scss";
+
+:host {
+    @include layout-horizontal();
+
+    vi-select {
+        border: none;
+    }
+
+    span, vi-select {
+        color: var(--vi-persistent-object-attribute-foreground, --theme-foreground);
+
+        --vi-select-input: #{'{
+            color: var(--vi-persistent-object-attribute-foreground, --theme-foreground);
+        }'};
+    }
+
+    #radiobuttons {
+        line-height: var(--theme-h2);
+    }
+}

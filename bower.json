@@ -1,6 +1,6 @@
 {
   "name": "Vidyano",
-  "version": "0.5.2-alpha",
+  "private": true,
   "license": "MIT",
   "ignore": [
     "/*.*",
@@ -23,27 +23,58 @@
     "webcomponentsjs": {
       "": "*-lite*.js"
     },
+    "marked": {
+      "lib": "lib/marked.js"
+    },
     "marked-element": {
       "": "marked*.html"
     },
     "layout": {
-      "": "layout.*"
+      "": [ "layout.html", "_layout.scss" ]
     },
     "bignumber.js": {
       "": "*.min.js"
+    },
+    "sortable": {
+      "": "sortable.min.js"
+    },
+    "d3": {
+      "": "d3.min.js"
+    },
+    "iron-overlay-behavior": {
+      "": [ "iron-overlay-behavior.html", "iron-overlay-manager.html", "iron-overlay-backdrop.html", "iron-focusables-helper.html" ]
+    },
+    "codemirror": {
+      "lib": "lib/*.*",
+      "mode/css": "mode/css/css.js",
+      "mode/htmlmixed": "mode/htmlmixed/htmlmixed.js",
+      "mode/javascript": "mode/javascript/javascript.js",
+      "mode/markdown": "mode/markdown/markdown.js",
+      "mode/sass": "mode/sass/sass.js",
+      "mode/xml": "mode/xml/xml.js"
+    },
+    "alertify.js": {
+      "": [ "lib/alertify.min.js", "themes/alertify.core.css", "themes/alertify.default.css" ]
     }
   },
-  "devDependencies": {
-    "moment": "2sky/moment#^2.10.0",
-    "polymer": "polymer/polymer#^1.0.5",
-    "paper-ripple": "polymerelements/paper-ripple#^1.0.1",
+  "dependencies": {
+    "es6-promise": "^3.0.2",
+    "polymer": "polymer/polymer#^1.6.0",
+    "paper-ripple": "polymerelements/paper-ripple#^1.0.8",
     "marked-element": "polymerelements/marked-element#^1.0.2",
-    "iron-a11y-keys": "polymerelements/iron-a11y-keys#^1.0.2",
-    "es6-promise": "2sky/es6-promise#^2.3.0",
+    "iron-a11y-keys": "polymerelements/iron-a11y-keys#^1.0.5",
+    "iron-collapse": "polymerelements/iron-collapse#^1.1.0",
+    "iron-list": "polymerelements/iron-list#^1.3.5",
+    "iron-media-query": "polymerelements/iron-media-query#^1.0.8",
+    "iron-overlay-behavior": "polymerelements/iron-overlay-behavior#^1.10.2",
+    "bignumber.js": "^2.0.7",
+    "moment": "^2.10.6",
+    "sortable": "RubaXa/sortable#^1.2.1",
+    "d3": "^3.5.6",
+    "codemirror": "^5.13.2",
+    "alertify.js": "^0.3.11",
     "linqjs": "2sky/linqjs#3.0.3-Beta4",
     "pathjs": "2sky/pathjs#master",
-    "sortable": "2sky/sortable#^1.2.0",
-    "layout": "2sky/layout#master",
-    "bignumber.js": "^2.0.7"
+    "layout": "2sky/layout#master"
   }
 }

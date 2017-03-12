@@ -1,35 +1,7 @@
-module Vidyano.WebComponents {
-    export class InputSearch extends WebComponent {
-        value: string;
-        focused: boolean;
+namespace Vidyano.WebComponents {
+    "use strict";
 
-        private _searchKeypressed(e: KeyboardEvent) {
-            if (e.keyCode == 13) {
-                var input = <HTMLInputElement>this.$["input"];
-                input.blur();
-
-                this._searchClick();
-            }
-        }
-
-        private _searchClick() {
-            this.fire("search", this.value);
-        }
-
-        private _input_focused() {
-            this.focused = true;
-        }
-
-        private _input_blurred() {
-            this.focused = false;
-        }
-
-        focus() {
-            this.$["input"].focus();
-        }
-    }
-
-    WebComponent.register(InputSearch, WebComponents, "vi", {
+    @WebComponent.register({
         properties: {
             value: {
                 type: String,
@@ -45,5 +17,46 @@ module Vidyano.WebComponents {
                 reflectToAttribute: true
             }
         }
-    });
+    })
+    export class InputSearch extends WebComponent {
+        value: string;
+        focused: boolean;
+        autofocus: boolean;
+
+        attached() {
+            super.attached();
+
+            if (this.autofocus)
+                this.focus();
+        }
+
+        private _searchKeypressed(e: KeyboardEvent) {
+            if (e.keyCode === 13)
+                this._searchClick();
+        }
+
+        private _searchClick(e?: TapEvent) {
+            this.fire("search", this.value);
+
+            if (e && !this.value)
+                e.stopPropagation();
+        }
+
+        private _input_focused() {
+            this.focused = true;
+        }
+
+        private _input_blurred() {
+            this.focused = false;
+        }
+
+        private _stop_tap(e: TapEvent) {
+            e.stopPropagation();
+            this.focus();
+        }
+
+        focus() {
+            this.$["input"].focus();
+        }
+    }
 }

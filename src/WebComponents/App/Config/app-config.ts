@@ -1,48 +1,118 @@
-﻿module Vidyano.WebComponents {
+﻿namespace Vidyano.WebComponents {
+    "use strict";
+
+    @WebComponent.register
     export class AppConfig extends WebComponent {
+        private _nodeObserver: PolymerDomChangeObserver;
         private _defaultAttributeConfig: PersistentObjectAttributeConfig;
-        private _attributeConfigs: linqjs.Enumerable<PersistentObjectAttributeConfig>;
-        private _tabConfigs: linqjs.Enumerable<PersistentObjectTabConfig>;
+        private _persistentObjectConfigs: PersistentObjectConfig[] = [];
+        private _attributeConfigs: PersistentObjectAttributeConfig[] = [];
+        private _tabConfigs: PersistentObjectTabConfig[] = [];
+        private _programUnitConfigs: ProgramUnitConfig[] = [];
+        private _queryConfigs: QueryConfig[] = [];
+        private _queryChartConfigs: QueryChartConfig[] = [];
 
         attached() {
             super.attached();
 
-            if (!this._defaultAttributeConfig) {
-                this._defaultAttributeConfig = <PersistentObjectAttributeConfig><any>this.appendChild(new WebComponents.PersistentObjectAttributeConfig());
-            }
-
-            (<any>this.app)._setConfiguration(this);
+            this._nodeObserver = Polymer.dom(this.root).observeNodes(this._nodesChanged.bind(this));
         }
 
-        getAttributeConfig(attr: Vidyano.PersistentObjectAttribute): PersistentObjectAttributeConfig {
-            if (!this._attributeConfigs)
-                this._attributeConfigs = this._getConfigs<PersistentObjectAttributeConfig>(Vidyano.WebComponents.PersistentObjectAttributeConfig);
+        detached() {
+            super.detached();
 
-            return this._attributeConfigs.firstOrDefault(c => c.parentObjectId == attr.parent.objectId && c.parentId == attr.parent.id && (c.name == attr.name || c.type == attr.type)) ||
-                this._attributeConfigs.firstOrDefault(c => c.parentId == attr.parent.id && (c.name == attr.name || c.type == attr.type)) ||
-                this._attributeConfigs.firstOrDefault(c => c.name == attr.name && c.type == attr.type) ||
-                this._attributeConfigs.firstOrDefault(c => c.name == attr.name) ||
-                this._attributeConfigs.firstOrDefault(c => c.type == attr.type) ||
-                this._defaultAttributeConfig;
+            Polymer.dom(this.root).unobserveNodes(this._nodeObserver);
+        }
+
+        private _nodesChanged(info: PolymerDomChangedInfo) {
+            info.addedNodes.forEach(node => this._handleNode(node as WebComponent, true));
+            info.removedNodes.forEach(node => this._handleNode(node as WebComponent, false));
+        }
+
+        private _handleNode(node: WebComponent, added: boolean) {
+            if (node.nodeType !== Node.ELEMENT_NODE)
+                return;
+
+            let arr: Array<WebComponent>;
+            switch (node.tagName.toUpperCase()) {
+                case "VI-PERSISTENT-OBJECT-ATTRIBUTE-CONFIG":
+                    arr = this._attributeConfigs;
+                    break;
+
+                case "VI-PERSISTENT-OBJECT-CONFIG":
+                    arr = this._persistentObjectConfigs;
+                    break;
+
+                case "VI-PERSISTENT-OBJECT-TAB-CONFIG":
+                    arr = this._tabConfigs;
+                    break;
+
+                case "VI-PROGRAM-UNIT-CONFIG":
+                    arr = this._programUnitConfigs;
+                    break;
+
+                case "VI-QUERY-CONFIG":
+                    arr = this._queryConfigs;
+                    break;
+
+                case "VI-QUERY-CHART-CONFIG":
+                    arr = this._queryChartConfigs;
+                    break;
+
+                default:
+                    return;
+            }
+
+            if (added)
+                arr.push(node);
+            else
+                arr.remove(node);
+        }
+
+        getSetting(key: string, defaultValue?: string): string {
+            const setting = <AppSetting>this.queryEffectiveChildren(`vi-app-setting[key="${key}"]`);
+            return setting ? setting.getAttribute("value") : defaultValue;
+        }
+
+        getPersistentObjectConfig(persistentObject: Vidyano.PersistentObject): PersistentObjectConfig {
+            return (<AppServiceHooks>this.app.service.hooks).getPersistentObjectConfig(persistentObject, this._persistentObjectConfigs);
+        }
+
+        getAttributeConfig(attribute: Vidyano.PersistentObjectAttribute): PersistentObjectAttributeConfig {
+            let config = (<AppServiceHooks>this.app.service.hooks).getAttributeConfig(attribute, this._attributeConfigs);
+            if (!config) {
+                if (!this._defaultAttributeConfig)
+                    this._defaultAttributeConfig = <PersistentObjectAttributeConfig><any>this.appendChild(new WebComponents.PersistentObjectAttributeConfig());
+
+                config = this._defaultAttributeConfig;
+            }
+
+            return config;
         }
 
         getTabConfig(tab: Vidyano.PersistentObjectTab): PersistentObjectTabConfig {
-            if (!this._tabConfigs)
-                this._tabConfigs = this._getConfigs<PersistentObjectTabConfig>(Vidyano.WebComponents.PersistentObjectTabConfig);
-            
-            return this._tabConfigs.firstOrDefault(c => c.name == tab.name && c.type == tab.parent.type && c.objectId == tab.parent.objectId) ||
-                this._tabConfigs.firstOrDefault(c => c.name == tab.name && c.type == tab.parent.type);
+            return (<AppServiceHooks>this.app.service.hooks).getTabConfig(tab, this._tabConfigs);
+        }
+
+        getProgramUnitConfig(name: string): ProgramUnitConfig {
+            return (<AppServiceHooks>this.app.service.hooks).getProgramUnitConfig(name, this._programUnitConfigs);
+        }
+
+        getQueryConfig(query: Vidyano.Query): QueryConfig {
+            return (<AppServiceHooks>this.app.service.hooks).getQueryConfig(query, this._queryConfigs);
+        }
+
+        getQueryChartConfig(type: string): QueryChartConfig {
+            return (<AppServiceHooks>this.app.service.hooks).getQueryChartConfig(type, this._queryChartConfigs);
         }
 
         private _getConfigs<T>(type: any): linqjs.Enumerable<T> {
-            return <linqjs.Enumerable<T>>Enumerable.from(Polymer.dom(this).children).where(c => c.tagName != "TEMPLATE").selectMany(element => {
-                if (element.tagName == "CONTENT")
-                    return Enumerable.from(Polymer.dom(element).getDistributedNodes()).where(c => c.tagName != "TEMPLATE").toArray();
+            return <linqjs.Enumerable<T>>Enumerable.from(Polymer.dom(this).children).where(c => c.tagName !== "TEMPLATE").selectMany(element => {
+                if (element.tagName === "CONTENT")
+                    return Enumerable.from(Polymer.dom(element).getDistributedNodes()).where(c => c.tagName !== "TEMPLATE").toArray();
 
                 return [element];
             }).where(child => child instanceof type).select(child => <T><any>child).memoize();
         }
     }
-
-    WebComponent.register(AppConfig, WebComponents, "vi");
 }

@@ -1,0 +1,40 @@
+@import "../_vars.scss";
+
+:host {
+    display: block;
+    padding: 0 calc(var(--theme-h4) / 2);
+
+    &[loading] {
+        visibility: hidden;
+    }
+
+    label {
+        @include flex();
+        display: block;
+        font-size: 15px;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: var(--theme-h4) var(--theme-h5) 0 calc(var(--theme-h5) - 1px);
+        color: var(--theme-color);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+
+        &:empty {
+            display: none;
+        }
+    }
+
+    table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+
+        tr {
+            td {
+                vertical-align: top;
+                padding: 0 calc(var(--theme-h4) / 2);
+            }
+        }
+    }
+}

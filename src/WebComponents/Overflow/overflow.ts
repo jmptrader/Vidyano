@@ -1,28 +1,54 @@
-module Vidyano.WebComponents {
+namespace Vidyano.WebComponents {
+    "use strict";
+
+    @WebComponent.register({
+        properties: {
+            hasOverflow: {
+                type: Boolean,
+                reflectToAttribute: true,
+                readOnly: true
+            }
+        },
+        listeners: {
+            "sizechanged": "_childSizechanged"
+        }
+    })
     export class Overflow extends WebComponent {
         private _overflownChildren: linqjs.Enumerable<HTMLElement>;
         private _visibibleSizeChangedSkip: { width: number; height: number };
-        hasOverflow: boolean;
+        private _previousHeight: number;
+        readonly hasOverflow: boolean; private _setHasOverflow: (val: boolean) => void;
 
-        private _setHasOverflow: (val: boolean) => void;
+        private _visibleContainerSizeChanged(e: Event, detail: { width: number; height: number }) {
+            this.$["visible"].style.maxWidth = `${detail.width}px`;
+
+            if (this._previousHeight !== detail.height)
+                this.$["first"].style.height = `${this._previousHeight = detail.height}px`;
+        }
+
+        private _childSizechanged() {
+            this._setHasOverflow(false);
+        }
 
         private _visibleSizeChanged(e: Event, detail: { width: number; height: number }) {
-            var popup = <WebComponents.Popup><any>this.$["overflowPopup"];
+            const popup = <WebComponents.Popup><any>this.$["overflowPopup"];
             if (popup.open)
                 return;
 
-            var children = this._getChildren();
-            children.forEach(child => {
-                Polymer.dom(child).removeAttribute("overflow");
-            });
+            requestAnimationFrame(() => {
+                const children = this._getChildren();
+                children.forEach(child => {
+                    Polymer.dom(child).removeAttribute("overflow");
+                });
 
-            this._setHasOverflow(children.toArray().some(child => child.offsetTop > 0));
+                this._setHasOverflow(children.toArray().some(child => child.offsetTop > 0));
+            });
         }
 
         protected _getChildren(): linqjs.Enumerable<HTMLElement> {
-            return Enumerable.from(Enumerable.from(Polymer.dom(this).children).where(c => c.tagName != "TEMPLATE").selectMany(element => {
-                if (element.tagName == "CONTENT")
-                    return Enumerable.from(Polymer.dom(element).getDistributedNodes()).where(c => c.tagName != "TEMPLATE").toArray();
+            return Enumerable.from(Enumerable.from(Polymer.dom(this).children).where(c => c.tagName !== "TEMPLATE").selectMany(element => {
+                if (element.tagName === "CONTENT")
+                    return Enumerable.from(Polymer.dom(element).getDistributedNodes()).where(c => c.tagName !== "TEMPLATE").toArray();
 
                 return [element];
             }).select(child => <HTMLElement>child).toArray());
@@ -44,11 +70,14 @@ module Vidyano.WebComponents {
             });
 
             Polymer.dom(this).flush();
+
             this._setHasOverflow(this._overflownChildren.toArray().some(child => child.offsetTop > 0));
         }
 
-        private _popup(e: Event) {
-            var children = this._getChildren();
+        private async _popup(e: Event) {
+            e.stopPropagation();
+
+            const children = this._getChildren();
             children.forEach(child => {
                 if (child.offsetTop > 0)
                     Polymer.dom(child).setAttribute("overflow", "");
@@ -56,30 +85,15 @@ module Vidyano.WebComponents {
 
             Polymer.dom(this).flush();
 
-            var popup = <WebComponents.Popup><any>this.$["overflowPopup"];
-            popup.popup().then(() => {
-                children.forEach(child => {
-                    Polymer.dom(child).removeAttribute("overflow");
-                });
+            const popup = <WebComponents.Popup><any>this.$["overflowPopup"];
+            await popup.popup();
 
-                Polymer.dom(this).flush();
-                this._setHasOverflow(children.toArray().some(child => child.offsetTop > 0));
+            children.forEach(child => {
+                Polymer.dom(child).removeAttribute("overflow");
             });
 
-            e.stopPropagation();
+            Polymer.dom(this).flush();
+            this._setHasOverflow(children.toArray().some(child => child.offsetTop > 0));
         }
     }
-
-    WebComponent.register(Overflow, WebComponents, "vi", {
-        properties: {
-            hasOverflow: {
-                type: Boolean,
-                reflectToAttribute: true,
-                readOnly: true
-            }
-        },
-        listeners: {
-            "sizechanged": "_visibleSizeChanged"
-        }
-    });
-} 
+}

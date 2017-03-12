@@ -8,6 +8,7 @@ interface String {
     startsWith(prefix: string): boolean;
     trimEnd(c: string): string;
     trimStart(c: string): string;
+    localeFormat(format: string, useDefault: boolean): string;
 }
 
 interface Date {
@@ -16,6 +17,8 @@ interface Date {
 
     netOffset(value: string);
     netOffset(): string;
+
+    format(format: string): string;
 }
 
 interface Number {
@@ -56,8 +59,17 @@ interface Array<T> {
 }
 
 interface BigNumber {
+    toNumber(): number;
+    equals(value: BigNumber): boolean;
 }
 
 declare var BigNumber: {
     new (number: number | string): BigNumber;
+};
+
+declare namespace Vidyano {
+    export function noop();
+    export function extend(target: any, ...sources: any[]);
+    export function splitWithTail(value: string, separator: string | RegExp, limit?: number): string[]
+    export function _debounce(func: Function, wait: number, immediate?: boolean): Function;
 }

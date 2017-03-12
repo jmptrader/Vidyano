@@ -1,29 +1,38 @@
-﻿module Vidyano.WebComponents {
-    export class PersistentObjectAttributeConfig extends WebComponent {
+﻿namespace Vidyano.WebComponents {
+    "use strict";
+
+    @TemplateConfig.register({
+        properties: {
+            type: String,
+            name: String,
+            noLabel: Boolean,
+            parentId: String,
+            parentObjectId: String,
+            height: {
+                type: String,
+                value: "1"
+            },
+            width: {
+                type: String,
+                value: "attr.columnSpan"
+            }
+        }
+    })
+    export class PersistentObjectAttributeConfig extends TemplateConfig<Vidyano.PersistentObjectAttribute> {
         private _calculateHeight: (attr: Vidyano.PersistentObjectAttribute) => number;
         private _calculateWidth: (attr: Vidyano.PersistentObjectAttribute) => number;
         private height: string;
         private width: string;
         type: string;
         name: string;
+        noLabel: boolean;
         parentId: string;
         parentObjectId: string;
-        component: string;
-        wrapAround: boolean;
-        template: any;
-
-        private _setTemplate: (template: HTMLElement) => void;
-
-        attached() {
-            super.attached();
-
-            this._setTemplate(<HTMLElement>Polymer.dom(this).querySelector("template"));
-        }
 
         calculateHeight(attr: Vidyano.PersistentObjectAttribute): number {
             if (!this._calculateHeight) {
-                if (/d+/.test(this.height)) {
-                    var height = parseInt(this.height);
+                if (/^\d+$/.test(this.height)) {
+                    const height = parseInt(this.height);
                     this._calculateHeight = () => height;
                 }
                 else
@@ -36,35 +45,14 @@
         calculateWidth(attr: Vidyano.PersistentObjectAttribute): number {
             if (!this._calculateWidth) {
                 if (/d+/.test(this.width)) {
-                    var width = parseInt(this.width);
+                    const width = parseInt(this.width);
                     this._calculateWidth = () => width;
                 }
                 else
                     this._calculateWidth = <any>new Function("attr", "return " + this.width);
             }
 
-            return this._calculateWidth(attr);
+            return Math.max(this._calculateWidth(attr), 1);
         }
     }
-
-    WebComponent.register(PersistentObjectAttributeConfig, WebComponents, "vi", {
-        properties: {
-            type: String,
-            name: String,
-            parentId: String,
-            parentObjectId: String,
-            height: {
-                type: String,
-                value: "2"
-            },
-            width: {
-                type: String,
-                value: "1"
-            },
-            template: {
-                type: Object,
-                readOnly: true
-            }
-        }
-    });
 }

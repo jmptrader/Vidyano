@@ -1,0 +1,97 @@
+@import "../vars.scss";
+
+:host {
+    position: relative;
+    display: block;
+    pointer-events: none;
+
+    > div {
+        @include layout-horizontal();
+        @include layout-center-center();
+        height: 100%;
+        text-align: center;
+    }
+
+    svg {
+        width: var(--vi-icon-width, 16px);
+        height: var(--vi-icon-height, 16px);
+    }
+
+    &.size-h1 svg {
+        width: var(--theme-h1);
+        height: var(--theme-h1);
+    }
+
+    &.size-h2 svg {
+        width: var(--theme-h2);
+        height: var(--theme-h2);
+    }
+
+    &.size-h3 svg {
+        width: var(--theme-h3);
+        height: var(--theme-h3);
+    }
+
+    &.size-h4 svg {
+        width: var(--theme-h4);
+        height: var(--theme-h4);
+    }
+
+    &.size-h5 svg {
+        width: var(--theme-h5);
+        height: var(--theme-h5);
+    }
+
+    &[source="Selected"] {
+        fill: var(--vi-icon-selected-unchecked-color, #bbb);
+
+        &[is-selected ] {
+            #backdrop {
+                opacity: 1 !important;
+            }
+
+            #check {
+                display: block;
+                fill: white;
+            }
+
+            &:not([disabled]) {
+                #box, #backdrop {
+                    fill: var(--vi-icon-selected-checked-color, --theme-color);
+                }
+            }
+
+            &[disabled] {
+                #box, #backdrop {
+                    fill: var(--vi-icon-selected-disabled-color, #666);
+                }
+            }
+        }
+
+        &:not([is-selected]) {
+            #check {
+                display: none;
+            }
+        }
+    }
+
+    &[source="SelectedRadio"] {
+        fill: var(--vi-icon-selected-unchecked-color, --theme-dark-border);
+
+        &[is-selected ] {
+            #check, #box {
+                fill: var(--theme-color);
+            }
+        }
+
+        &:not([is-selected]) {
+            #check {
+                display: none;
+            }
+        }
+
+        &[disabled] {
+            fill: var(--vi-icon-selected-disabled-color, #666) !important;
+        }
+    }
+}

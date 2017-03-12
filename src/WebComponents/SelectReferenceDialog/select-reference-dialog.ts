@@ -1,38 +1,46 @@
-﻿module Vidyano.WebComponents {
-    export class SelectReferenceDialog extends WebComponent {
-        private _grid: WebComponents.QueryGrid;
-        private _itemClickCallback: EventListener;
-        private _dialog: WebComponents.DialogInstance;
-        canSelect: boolean;
-        query: Vidyano.Query;
+﻿namespace Vidyano.WebComponents {
+    "use strict";
 
-        detached() {
-            super.detached();
-
-            if (this._itemClickCallback && this._grid) {
-                this._grid.asElement.removeEventListener("item-click", this._itemClickCallback);
-                this._itemClickCallback = null;
+    @Dialog.register({
+        properties: {
+            query: Object,
+            canSelect: Boolean,
+            canAddNewReference: Boolean,
+            initializing: {
+                type: Boolean,
+                observer: "_initializingChanged"
             }
-        }
+        },
+        forwardObservers: [
+            "_selectedItemsChanged(query.selectedItems)"
+        ]
+    })
+    export class SelectReferenceDialog extends Dialog {
+        canSelect: boolean;
 
-        show(): Promise<any> {
-            var dialog = <WebComponents.Dialog><any>this.$["dialog"];
-            this.empty();
+        constructor(public query: Vidyano.Query, forceSearch?: boolean, public canAddNewReference: boolean = false) {
+            super();
 
-            this._grid = new WebComponents.QueryGrid();
-            this._grid.asElement.addEventListener("item-click", this._itemClickCallback = this._selectReference.bind(this));
-            this._grid.classList.add("fit");
-            this._grid.asLookup = true;
-            this._grid.query = this.query;
+            query["_query-grid-vertical-scroll-offset"] = undefined;
 
-            Polymer.dom(this).appendChild(this._grid);
+            let search = forceSearch || !!query.textSearch || !query.hasSearched;
+            query.columns.forEach(c => {
+                if (!c.selectedDistincts.isEmpty()) {
+                    search = search || true;
+                    c.selectedDistincts = Enumerable.empty<string>();
+                }
 
-            this._dialog = dialog.show({
-                autoSize: true
+                c.selectedDistinctsInversed = false;
             });
 
-            return this._dialog.result;
-		}
+            if (search)
+                query.search();
+        }
+
+        private _initializingChanged(value: boolean) {
+            if (!value)
+                (<InputSearch>this.$["search"]).focus();
+        }
 
         private _selectedItemsChanged() {
             if (!this.isAttached)
@@ -41,24 +49,24 @@
             this.canSelect = this.query && this.query.selectedItems && this.query.selectedItems.length > 0;
         }
 
-		private _invalidateCanSelect(selectedItems: QueryResultItem[] = (this.query ? this.query.selectedItems : undefined)) {
-			this.canSelect = selectedItems && selectedItems.length > 0;
-		}
+        private _invalidateCanSelect(selectedItems: QueryResultItem[] = (this.query ? this.query.selectedItems : undefined)) {
+            this.canSelect = selectedItems && selectedItems.length > 0;
+        }
 
-		private _queryPropertyChanged(sender: Query, detail: Vidyano.Common.PropertyChangedArgs) {
-			if (detail.propertyName == "selectedItems")
-				this._invalidateCanSelect(detail.newValue);
-		}
+        private _queryPropertyChanged(sender: Query, detail: Vidyano.Common.PropertyChangedArgs) {
+            if (detail.propertyName === "selectedItems")
+                this._invalidateCanSelect(detail.newValue);
+        }
 
         private _select() {
             if (!this.canSelect)
                 return;
 
-            this._dialog.resolve(this.query.selectedItems);
-		}
+            this.close(this.query.selectedItems);
+        }
 
-        private _cancel() {
-            this._dialog.resolve();
+        private _addNew() {
+            this.close("AddNewReference");
         }
 
         private _search(e: CustomEvent, detail: string) {
@@ -72,25 +80,11 @@
         private _selectReference(e: CustomEvent) {
             e.preventDefault();
 
-            var detail = <QueryGridItemClickEventArgs>e.detail;
-			if (this.query.maxSelectedItems == 1)
-                this._dialog.resolve([detail.item]);
-			else
-				detail.item.isSelected = !detail.item.isSelected;
-		}
+            const detail = <IQueryGridItemTapEventArgs>e.detail;
+            if (this.query.maxSelectedItems === 1)
+                this.close([detail.item]);
+            else
+                detail.item.isSelected = !detail.item.isSelected;
+        }
     }
-
-	Vidyano.WebComponents.WebComponent.register(Vidyano.WebComponents.SelectReferenceDialog, Vidyano.WebComponents, "vi",
-        {
-            properties: {
-                query: Object,
-                canSelect: Boolean
-            },
-            hostAttributes: {
-                "dialog": ""
-            },
-            forwardObservers: [
-                "_selectedItemsChanged(query.selectedItems)"
-            ]
-        });
 }

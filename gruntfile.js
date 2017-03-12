@@ -1,4 +1,4 @@
-module.exports = function (grunt) {
+module.exports = function(grunt) {
     grunt.initConfig({
         bower: {
             install: {
@@ -9,92 +9,185 @@ module.exports = function (grunt) {
                 }
             }
         },
-        less: {
+        sass: {
             development: {
                 options: {
                     paths: ["importfolder"]
                 },
-                files: [
-					{
-					    expand: true,
-					    src: ["src/**/*.less"],
-					    ext: ".css"
-					}
-                ]
+                files: [{
+                    expand: true,
+                    src: ["src/WebComponents/**/*.scss"],
+                    ext: ".css"
+                }]
             },
         },
-        watch: {
-            less: {
-                files: ["src/**/*.less"],
-                tasks: ["less"],
+        ts: {
+            vidyano: {
+                cwd: 'src/Libs/Vidyano/',
+                tsconfig: 'src/Libs/Vidyano/tsconfig.json',
                 options: {
-                    livereload: true
+                    fast: 'never'
+                }
+            },
+            webcomponents: {
+                tsconfig: "tsconfig.json",
+                options: {
+                    fast: 'never'
                 }
             }
         },
-        clean: ["dist"],
+        tslint: {
+            options: {
+                configuration: "tslint.json"
+            },
+            files: {
+                src: [
+                    'src/Libs/Vidyano/**/*.ts',
+                    'src/WebComponents/**/*.ts',
+                    '!src/Libs/Vidyano/_reference.ts',
+                    '!src/Libs/Vidyano/vidyano.d.ts'
+                ]
+            }
+        },
+        clean: ["dist/Vidyano.Web2/src/"],
         copy: {
+            tslib: {
+                cwd: "node_modules/tslib",
+                src: "tslib.js",
+                dest: "src/Libs/tslib/",
+                expand: true
+            },
             dist: {
                 cwd: "src",
                 src: "**",
-                dest: "dist/",
+                dest: "dist/Vidyano.Web2/src/",
                 expand: true,
-                filter: function (src) {
-                    if (src.indexOf(".less") > 0 || src.indexOf(".min.css") > 0 || src.indexOf(".ts") > 0 || src.indexOf(".tt") > 0 || src.indexOf(".config") > 0 || src.indexOf("\\bin") > 0)
+                filter: function(src) {
+                    if (src.indexOf("demo") >= 0 || src.endsWith(".min.css") || src.indexOf("Test") >= 0)
                         return false;
 
-                    if (src.indexOf("/colors.css") > 0 || src.indexOf("vidyano.css") > 0)
-                        return false;
+                    if (src.indexOf(".css") > 0 || src.endsWith(".js") || src.indexOf(".html") > 0)
+                        return true;
 
-                    return true;
+                    return false;
                 }
-            },
-            less: {
-                src: "src/WebComponents/colors.less",
-                dest: "dist/colors.less"
             }
         },
         dtsGenerator: {
             options: {
                 name: 'Vidyano',
                 baseDir: 'src',
-                out: 'dist/vidyano.d.ts'
+                out: 'dist/Vidyano.Web2/vidyano.d.ts'
             },
             default: {
-                src: ['src/**/*.ts']
+                src: ['src/**/*.ts', '!src/Libs/Vidyano/vidyano.d.ts', 'node_modules/typescript/lib/lib.d.ts']
             }
         },
-        tsconfig: {
-            make: {
+        cssmin: {
+            dist: {
+                files: [{
+                    expand: true,
+                    src: 'dist/Vidyano.Web2/src/WebComponents/**/*.css'
+                }]
+            }
+        },
+        uglify: {
+            nuget: {
                 options: {
-                    filesGlob: [
-                        'src/**/*.ts'
-                    ],
-                    additionalOptions: {
-                        compilerOptions: {
-                            "version": "1.5.3",
-                            "target": "es5",
-                            "removeComments": true
-                        },
+                    mangle: false
+                },
+                files: [{
+                    expand: true,
+                    src: 'dist/Vidyano.Web2/src/**/*.js',
+                    filter: function(src) {
+                        if (src == "dist\\Vidyano.Web2\\src\\Libs\\bignumber.js" || src.endsWith("lertify.js") || src.endsWith(".min.js"))
+                            return false;
+
+                        return true;
                     }
-                }
+                }]
+            }
+        },
+        revision: {
+            options: {
+                property: 'meta.revision',
+                ref: 'HEAD',
+                short: true
+            }
+        },
+        replace: {
+            vidyanoVersion: {
+                src: ['dist\\Vidyano.Web2\\src\\Libs\\Vidyano\\vidyano.js'],
+                overwrite: true,
+                replacements: [{from: '"latest"', to: '"' + grunt.option("vidyano-version") + (grunt.option("vidyano-version-prerelease") ? "-" + grunt.option("vidyano-version-prerelease") : "") + '-<%= meta.revision %>"'}]
+            },
+            nugetVersion: {
+                src: ['dist\\Vidyano.Web2\\Properties\\AssemblyInfo.cs'],
+                overwrite: true,
+                replacements: [
+                    {from: "0.0.0", to: grunt.option("vidyano-version")},
+                    {from: "-prerelease", to: grunt.option("vidyano-version-prerelease") ? "-" + grunt.option("vidyano-version-prerelease") : ""}
+                ]
+            },
+            nugetVersionRevert: {
+                src: ['dist\\Vidyano.Web2\\Properties\\AssemblyInfo.cs'],
+                overwrite: true,
+                replacements: [
+                    {from: grunt.option("vidyano-version"), to: "0.0.0"},
+                    {from: 'AssemblyInformationalVersion("0.0.0' + (grunt.option("vidyano-version-prerelease") ? "-" + grunt.option("vidyano-version-prerelease") : ""), to: 'AssemblyInformationalVersion("0.0.0-prerelease'}
+                ]
             }
         }
     });
 
-    grunt.registerTask("default", ["bower:install"]);
-    grunt.registerTask("dist", [
+    grunt.registerTask("default", [
+        "bower:install",
+        "sass",
+        "copy:tslib",
+        "ts"
+    ]);
+
+    grunt.registerTask("nuget", [
+        "bower:install",
+        "sass",
+        "copy:tslib",
+        "ts",
+        "tslint",
         "clean",
         "copy:dist",
-        "copy:less",
+        "revision",
+        "replace:vidyanoVersion",
+        "replace:nugetVersion",
+        "uglify",
+        "cssmin",
         "dtsGenerator"
+    ]);
+
+    grunt.registerTask("cdn", [
+        "bower:install",
+        "sass",
+        "copy:tslib",
+        "ts",
+        "clean",
+        "copy:dist",
+        "revision",
+        "replace:vidyanoVersion",
+        "replace:nugetVersion"
+    ]);
+
+    grunt.registerTask("nugetrevert", [
+        "replace:nugetVersionRevert",
     ]);
 
     grunt.loadNpmTasks("grunt-bower-task");
     grunt.loadNpmTasks("grunt-contrib-clean");
+    grunt.loadNpmTasks("grunt-contrib-cssmin");
     grunt.loadNpmTasks("grunt-contrib-copy");
-    grunt.loadNpmTasks("grunt-contrib-less");
-    grunt.loadNpmTasks("grunt-contrib-watch");
-    grunt.loadNpmTasks("grunt-tsconfig");
+    grunt.loadNpmTasks('grunt-contrib-uglify');
+    grunt.loadNpmTasks("grunt-sass");
+    grunt.loadNpmTasks("grunt-text-replace");
+    grunt.loadNpmTasks("grunt-git-revision");
+    grunt.loadNpmTasks("grunt-ts");
+    grunt.loadNpmTasks("grunt-tslint");
     grunt.loadNpmTasks('dts-generator');
 };

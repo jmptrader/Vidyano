@@ -1,0 +1,14 @@
+@import "../_vars.scss";
+
+:host {
+    display: block;
+    padding: 0 1px;
+    overflow: hidden;
+
+    ::content .image {
+        height: calc(var(--theme-h2) - 2px);
+        background-position: center center;
+        background-size: contain;
+        background-repeat: no-repeat;
+    }
+}
